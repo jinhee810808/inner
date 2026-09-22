@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>클라스오토 사내전산 - DB 목록</title>
+
+    <script>
+        if (sessionStorage.getItem('isLoggedIn') !== 'true') {
+            alert('로그인이 필요한 페이지입니다.');
+            location.replace('index.html');
+        }
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        body {
+            background-color: #f4f6f9;
+            color: #333;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            min-width: 0;
+        }
+        .navbar {
+            background-color: #ffffff;
+            height: 60px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            gap: 15px;
+        }
+        .btn-menu-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f3f5;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 18px;
+            cursor: pointer;
+            color: #1a2a3a;
+            width: 36px;
+            height: 36px;
+        }
+        .user-info { font-size: 14px; color: #444; margin-left: auto; }
+        .btn-logout {
+            padding: 6px 14px;
+            background-color: #e74c3c;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .content {
+            padding: 25px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .page-header h2 { font-size: 20px; color: #1a2a3a; }
+        .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .search-box input {
+            padding: 7px 12px;
+            border: 1px solid #ccd0d5;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 250px;
+            outline: none;
+        }
+        .page-size-select {
+            padding: 6px 10px;
+            border: 1px solid #ccd0d5;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+            background-color: #fff;
+            cursor: pointer;
+        }
+
+        .table-wrapper {
+            background: #fff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        .table-scroll { overflow: auto; max-height: calc(100vh - 250px); }
+        .excel-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+        .excel-table thead th {
+            background-color: #000000;
+            color: #ffffff;
+            padding: 10px 12px;
+            border: 1px solid #2f363d;
+            font-weight: 600;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .excel-table td { padding: 8px 12px; border: 1px solid #e1e4e8; text-align: center; }
+        .excel-table tbody tr:hover { background-color: #f1f7fd; }
+        .excel-table tbody tr.row-selected { background-color: #e8f0fe !important; }
+        .col-checkbox { width: 38px; min-width: 38px; padding: 6px !important; }
+        .col-checkbox input[type="checkbox"] { cursor: pointer; width: 15px; height: 15px; vertical-align: middle; }
+        .link-name { color: #0056b3; cursor: pointer; text-decoration: underline; font-weight: 600; }
+
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: #fafbfc;
+            border-top: 1px solid #e1e4e8;
+            font-size: 13px;
+            color: #586069;
+        }
+        .pagination-buttons { display: flex; gap: 4px; }
+        .btn-page {
+            padding: 5px 10px;
+            border: 1px solid #d0d7de;
+            background-color: #fff;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .btn-page.active { background-color: #0056b3; color: #fff; border-color: #0056b3; font-weight: bold; }
+
+        /* 상세 모달 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-window {
+            background: #ffffff;
+            width: 100%;
+            max-width: 760px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            max-height: 85vh;
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 16px 20px;
+            background-color: #1a2a3a;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-close-btn { background: transparent; border: none; color: #fff; font-size: 22px; cursor: pointer; }
+        #editForm { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        .modal-body { padding: 20px; overflow-y: auto; flex: 1; min-height: 0; }
+        .modal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 12px; font-weight: 600; color: #495057; }
+        .form-group input { padding: 8px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px; outline: none; }
+        .modal-footer {
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .btn-modal-cancel { background: #6c757d; color: #fff; border: none; padding: 7px 14px; border-radius: 4px; cursor: pointer; }
+        .btn-modal-save { background: #0056b3; color: #fff; border: none; padding: 7px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 998;
+        }
+        .sidebar-overlay.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- [공통 사이드바가 삽입되는 컨테이너] -->
+    <div id="sidebarContainer"></div>
+
+    <div class="main-container">
+        <header class="navbar">
+            <button class="btn-menu-toggle" id="btnToggleSidebar">☰</button>
+            <span class="user-info" id="userWelcome">사용자님 환영합니다</span>
+            <button class="btn-logout" id="btnLogout">로그아웃</button>
+        </header>
+
+        <main class="content">
+            <div class="page-header">
+                <h2>고객 상담 DB 목록</h2>
+                <div class="toolbar">
+                    <select id="pageSizeSelect" class="page-size-select">
+                        <option value="10">10개씩 보기</option>
+                        <option value="20" selected>20개씩 보기</option>
+                        <option value="50">50개씩 보기</option>
+                    </select>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="고객명, 휴대폰번호, 차종, 출처 검색...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <div class="table-scroll">
+                    <table class="excel-table">
+                        <thead>
+                            <tr>
+                                <th class="col-checkbox">
+                                    <input type="checkbox" id="checkAll" title="전체 선택">
+                                </th>
+                                <th>순번</th>
+                                <th>휴대폰번호</th>
+                                <th>고객명</th>
+                                <th>년</th>
+                                <th>월</th>
+                                <th>접수일2</th>
+                                <th>국산/외산</th>
+                                <th>메이커</th>
+                                <th>차종명</th>
+                                <th>희망차종</th>
+                                <th>출처2</th>
+                                <th>출처</th>
+                                <th>렌트리스</th>
+                                <th>상담원</th>
+                                <th>출고여부</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dbTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container">
+                    <div id="pageInfoText">총 0건 중 0 - 0건 표시</div>
+                    <div class="pagination-buttons" id="paginationControls"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 상세 편집 모달 -->
+    <div class="modal-overlay" id="editModalOverlay">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3>고객 DB 상세 정보</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="editForm" onsubmit="handleFormSubmit(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+                    <div class="modal-grid">
+                        <div class="form-group">
+                            <label>고객명 *</label>
+                            <input type="text" id="editName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>휴대폰번호</label>
+                            <input type="text" id="editPhone">
+                        </div>
+                        <div class="form-group">
+                            <label>접수일2</label>
+                            <input type="date" id="editReceiveDate">
+                        </div>
+                        <div class="form-group">
+                            <label>국산/외산</label>
+                            <input type="text" id="editOrigin">
+                        </div>
+                        <div class="form-group">
+                            <label>메이커</label>
+                            <input type="text" id="editMaker">
+                        </div>
+                        <div class="form-group">
+                            <label>차종명</label>
+                            <input type="text" id="editCarName">
+                        </div>
+                        <div class="form-group">
+                            <label>희망차종</label>
+                            <input type="text" id="editHopeCar">
+                        </div>
+                        <div class="form-group">
+                            <label>렌트리스</label>
+                            <input type="text" id="editRentLease">
+                        </div>
+                        <div class="form-group">
+                            <label>출처2</label>
+                            <input type="text" id="editSource2">
+                        </div>
+                        <div class="form-group">
+                            <label>출처</label>
+                            <input type="text" id="editSource">
+                        </div>
+                        <div class="form-group">
+                            <label>상담원</label>
+                            <input type="text" id="editConsultant">
+                        </div>
+                        <div class="form-group">
+                            <label>출고여부</label>
+                            <input type="text" id="editReleaseStatus">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal-cancel" onclick="closeModal()">취소</button>
+                    <button type="submit" class="btn-modal-save">저장 완료</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 사이드바 로더 연결 -->
+    <script src="sidebar.js"></script>
+
+    <script>
+        // 공통 사이드바 로드 (DB 목록 활성화)
+        initCommonSidebar('navDbList');
+
+        let dbData = [
+            {
+                id: 1,
+                phone: "010-3125-6977",
+                name: "방진성",
+                year: 2022,
+                month: 4,
+                receiveDate: "2022-04-01",
+                origin: "-",
+                maker: "-",
+                carName: "-",
+                hopeCar: "718",
+                source2: "k다이렉트카",
+                source: "k다이렉트카(카브로)",
+                rentLease: "lease",
+                consultant: "-",
+                releaseStatus: "-"
+            }
+        ];
+
+        let filteredData = [...dbData];
+        let selectedRowIds = new Set();
+        let currentPage = 1;
+        let pageSize = 20;
+
+        function renderTable() {
+            const total = filteredData.length;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const endIdx = Math.min(startIdx + pageSize, total);
+            const pageSlice = filteredData.slice(startIdx, endIdx);
+
+            const tbody = document.getElementById('dbTableBody');
+            const checkAll = document.getElementById('checkAll');
+
+            if (total === 0) {
+                tbody.innerHTML = `<tr><td colspan="16" style="padding: 24px; color:#888;">조회된 데이터가 없습니다.</td></tr>`;
+                if (checkAll) checkAll.checked = false;
+            } else {
+                tbody.innerHTML = pageSlice.map((item, idx) => {
+                    const displayNo = total - (startIdx + idx);
+                    const isChecked = selectedRowIds.has(item.id);
+
+                    return `
+                        <tr class="${isChecked ? 'row-selected' : ''}" data-id="${item.id}">
+                            <td class="col-checkbox" onclick="event.stopPropagation()">
+                                <input type="checkbox" class="row-checkbox" data-id="${item.id}" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow(${item.id}, this.checked)">
+                            </td>
+                            <td style="font-weight:600; color:#555;">${displayNo}</td>
+                            <td>${item.phone || '-'}</td>
+                            <td>
+                                <span class="link-name" onclick="openModal(${item.id})">${item.name || '-'}</span>
+                            </td>
+                            <td>${item.year || '-'}</td>
+                            <td>${item.month || '-'}</td>
+                            <td>${item.receiveDate || '-'}</td>
+                            <td>${item.origin || '-'}</td>
+                            <td>${item.maker || '-'}</td>
+                            <td>${item.carName || '-'}</td>
+                            <td style="font-weight: 600;">${item.hopeCar || '-'}</td>
+                            <td>${item.source2 || '-'}</td>
+                            <td>${item.source || '-'}</td>
+                            <td>${item.rentLease || '-'}</td>
+                            <td>${item.consultant || '-'}</td>
+                            <td>${item.releaseStatus || '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                syncCheckAll(pageSlice);
+            }
+
+            document.getElementById('pageInfoText').textContent = total === 0 ? "데이터 없음" : `총 ${total}건 중 ${startIdx + 1} - ${endIdx}건 표시`;
+            renderPagination(totalPages);
+        }
+
+        document.getElementById('checkAll').addEventListener('change', function() {
+            const isChecked = this.checked;
+            const startIdx = (currentPage - 1) * pageSize;
+            const pageSlice = filteredData.slice(startIdx, startIdx + pageSize);
+
+            pageSlice.forEach(item => {
+                if (isChecked) selectedRowIds.add(item.id);
+                else selectedRowIds.delete(item.id);
+            });
+
+            document.querySelectorAll('.row-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+                const tr = cb.closest('tr');
+                if (tr) tr.classList.toggle('row-selected', isChecked);
+            });
+        });
+
+        window.toggleSelectRow = function(id, isChecked) {
+            if (isChecked) selectedRowIds.add(id);
+            else selectedRowIds.delete(id);
+
+            const tr = document.querySelector(`tr[data-id="${id}"]`);
+            if (tr) tr.classList.toggle('row-selected', isChecked);
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const pageSlice = filteredData.slice(startIdx, startIdx + pageSize);
+            syncCheckAll(pageSlice);
+        };
+
+        function syncCheckAll(pageSlice) {
+            const checkAll = document.getElementById('checkAll');
+            if (!checkAll || pageSlice.length === 0) return;
+            checkAll.checked = pageSlice.every(i => selectedRowIds.has(i.id));
+        }
+
+        const editModalOverlay = document.getElementById('editModalOverlay');
+
+        window.openModal = function(id) {
+            const item = dbData.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('editId').value = item.id;
+            document.getElementById('editName').value = item.name;
+            document.getElementById('editPhone').value = item.phone;
+            document.getElementById('editReceiveDate').value = item.receiveDate !== '-' ? item.receiveDate : '';
+            document.getElementById('editOrigin').value = item.origin;
+            document.getElementById('editMaker').value = item.maker;
+            document.getElementById('editCarName').value = item.carName;
+            document.getElementById('editHopeCar').value = item.hopeCar;
+            document.getElementById('editRentLease').value = item.rentLease;
+            document.getElementById('editSource2').value = item.source2;
+            document.getElementById('editSource').value = item.source;
+            document.getElementById('editConsultant').value = item.consultant;
+            document.getElementById('editReleaseStatus').value = item.releaseStatus;
+
+            editModalOverlay.classList.add('active');
+        };
+
+        window.closeModal = function() {
+            editModalOverlay.classList.remove('active');
+        };
+
+        window.handleFormSubmit = function(e) {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('editId').value, 10);
+            const target = dbData.find(d => d.id === id);
+
+            if (target) {
+                target.name = document.getElementById('editName').value.trim();
+                target.phone = document.getElementById('editPhone').value.trim();
+                target.receiveDate = document.getElementById('editReceiveDate').value || '-';
+                target.origin = document.getElementById('editOrigin').value.trim();
+                target.maker = document.getElementById('editMaker').value.trim();
+                target.carName = document.getElementById('editCarName').value.trim();
+                target.hopeCar = document.getElementById('editHopeCar').value.trim();
+                target.rentLease = document.getElementById('editRentLease').value.trim();
+                target.source2 = document.getElementById('editSource2').value.trim();
+                target.source = document.getElementById('editSource').value.trim();
+                target.consultant = document.getElementById('editConsultant').value.trim();
+                target.releaseStatus = document.getElementById('editReleaseStatus').value.trim();
+
+                if (target.receiveDate !== '-') {
+                    const parts = target.receiveDate.split('-');
+                    target.year = parseInt(parts[0], 10);
+                    target.month = parseInt(parts[1], 10);
+                }
+            }
+
+            closeModal();
+            applySearch();
+            alert('DB 정보가 수정되었습니다.');
+        };
+
+        function applySearch() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+            filteredData = dbData.filter(d => 
+                String(d.name || '').toLowerCase().includes(keyword) ||
+                String(d.phone || '').includes(keyword) ||
+                String(d.hopeCar || '').toLowerCase().includes(keyword) ||
+                String(d.source || '').toLowerCase().includes(keyword) ||
+                String(d.source2 || '').toLowerCase().includes(keyword)
+            );
+            currentPage = 1;
+            renderTable();
+        }
+
+        document.getElementById('searchInput').addEventListener('input', applySearch);
+        document.getElementById('pageSizeSelect').addEventListener('change', (e) => {
+            pageSize = parseInt(e.target.value, 10);
+            currentPage = 1;
+            renderTable();
+        });
+
+        function renderPagination(totalPages) {
+            const container = document.getElementById('paginationControls');
+            let html = '';
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<button class="btn-page ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        window.goToPage = function(page) {
+            currentPage = page;
+            renderTable();
+        };
+
+        const userName = sessionStorage.getItem('userName') || '관리자';
+        document.getElementById('userWelcome').textContent = `${userName}님 환영합니다`;
+
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            sessionStorage.clear();
+            location.replace('index.html');
+        });
+
+        renderTable();
+    </script>
+</body>
+</html>

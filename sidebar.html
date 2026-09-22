@@ -1,0 +1,175 @@
+<style>
+    /* 공통 사이드바 스타일 */
+    #sidebarContainer {
+        display: flex;
+        flex-shrink: 0;
+        min-height: 100vh;
+        align-self:stretch;
+    }
+    .sidebar {
+        width: 250px;
+        background-color: #1a2a3a;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        flex-shrink: 0;
+        transition: margin-left 0.28s ease, transform 0.28s ease;
+        overflow-x: hidden;
+        white-space: nowrap;
+    }
+    .sidebar.collapsed {
+        margin-left: -250px;
+    }
+    .sidebar-top {
+        display: flex;
+        flex-direction: column;
+    }
+    .sidebar-title {
+        padding: 20px;
+        font-size: 18px;
+        font-weight: bold;
+        border-bottom: 1px solid #2a3c4f;
+    }
+    .sidebar-menu {
+        list-style: none;
+        padding: 15px 0;
+    }
+    .sidebar-menu li a {
+        display: block;
+        padding: 12px 20px;
+        color: #c2c9d1;
+        text-decoration: none;
+        font-size: 14px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .sidebar-menu li a:hover,
+    .sidebar-menu li a.active {
+        background-color: #0056b3;
+        color: #fff;
+    }
+
+    /* 하단 위젯 */
+    .sidebar-bottom-info {
+        padding: 12px 14px;
+        margin: 12px;
+        background-color: #121e2a;
+        border-radius: 8px;
+        border: 1px solid #223447;
+        font-size: 12px;
+    }
+    .info-section {
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #1e2f42;
+    }
+    .info-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .info-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: #78909c;
+        margin-bottom: 5px;
+    }
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+    }
+    .info-label { color: #90a4ae; }
+    .info-val { font-weight: 600; color: #ffffff; }
+
+    @media (max-width: 768px) {
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            z-index: 999;
+            margin-left: 0 !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            overflow-y: auto;
+        }
+        .sidebar.mobile-open {
+            transform: translateX(0);
+        }
+    }
+</style>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+        <div class="sidebar-title">클라스오토 사내전산</div>
+        <ul class="sidebar-menu">
+            <li><a href="dashboard.html" id="navDashboard">대시보드</a></li>
+            <li><a href="dashboard.html?tab=shipment" id="navShipment">출고 목록</a></li>
+            <li><a href="db_list.html" id="navDbList">DB 목록</a></li>
+            <li><a>개인고객 목록</a></li>
+            <li><a>매출 및 정산</a></li>
+            <li><a>시스템 설정</a></li>
+        </ul>
+    </div>
+
+    <!-- 하단 날씨/환율/유가 위젯 -->
+    <div class="sidebar-bottom-info">
+        <div class="info-header">
+            <span>서울 날씨 (어제 / 오늘 / 내일)</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; margin-top: 4px;">
+            <div style="background: rgba(255,255,255,0.05); padding: 6px 2px; border-radius: 4px;">
+                <div style="font-size: 11px; color: #90a4ae; margin-bottom: 2px;">어제</div>
+                <div id="yesterdayIcon" style="font-size: 14px;">-</div>
+                <div id="yesterdayTemp" style="font-size: 12px; font-weight: bold; color: #cfd8dc; margin-top: 2px;">--°C</div>
+                <div id="yesterdayDesc" style="font-size: 10px; color: #78909c;">-</div>
+            </div>
+            <div style="background: rgba(0, 86, 179, 0.2); border: 1px solid rgba(0, 86, 179, 0.4); padding: 6px 2px; border-radius: 4px;">
+                <div style="font-size: 11px; color: #64b5f6; font-weight: bold; margin-bottom: 2px;">오늘</div>
+                <div id="todayIcon" style="font-size: 14px;">-</div>
+                <div id="todayTemp" style="font-size: 12px; font-weight: bold; color: #ffffff; margin-top: 2px;">--°C</div>
+                <div id="todayDesc" style="font-size: 10px; color: #90caf9;">-</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 6px 2px; border-radius: 4px;">
+                <div style="font-size: 11px; color: #90a4ae; margin-bottom: 2px;">내일</div>
+                <div id="tomorrowIcon" style="font-size: 14px;">-</div>
+                <div id="tomorrowTemp" style="font-size: 12px; font-weight: bold; color: #cfd8dc; margin-top: 2px;">--°C</div>
+                <div id="tomorrowDesc" style="font-size: 10px; color: #78909c;">-</div>
+            </div>
+        </div>
+
+        <div class="info-section" style="margin-top: 10px;">
+            <div class="info-header">
+                <span>주요 환율</span>
+                <span style="font-size: 10px; color:#546e7a;">실시간</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">USD / KRW</span>
+                <span class="info-val" id="usdRate">로딩 중...</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">EUR / KRW</span>
+                <span class="info-val" id="eurRate">로딩 중...</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">JPY / KRW (100엔)</span>
+                <span class="info-val" id="jpyRate">로딩 중...</span>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-header">
+                <span>국제 유가 (브렌트유)</span>
+                <span style="font-size: 10px; color:#546e7a;">실시간</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">배럴당 시세</span>
+                <span class="info-val" id="oilPrice">조회 중...</span>
+            </div>
+        </div>
+    </div>
+</aside>

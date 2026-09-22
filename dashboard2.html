@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>클라스오토 사내전산 - 대시보드</title>
+
+    <!-- [보안 체크] 비로그인 사용자 리다이렉트 -->
+    <script>
+        if (sessionStorage.getItem('isLoggedIn') !== 'true') {
+            alert('로그인이 필요한 페이지입니다.');
+            location.replace('index.html');
+        }
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        body {
+            background-color: #f4f6f9;
+            color: #333;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 좌측 사이드바 */
+        .sidebar {
+            width: 250px;
+            background-color: #1a2a3a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .sidebar-top {
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-title {
+            padding: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            border-bottom: 1px solid #2a3c4f;
+        }
+        .sidebar-menu {
+            list-style: none;
+            padding: 15px 0;
+        }
+        .sidebar-menu li a {
+            display: block;
+            padding: 12px 20px;
+            color: #c2c9d1;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .sidebar-menu li a:hover,
+        .sidebar-menu li a.active {
+            background-color: #0056b3;
+            color: #fff;
+        }
+
+        /* 하단 날씨/환율 위젯 */
+        .sidebar-bottom-info {
+            padding: 12px 14px;
+            margin: 12px;
+            background-color: #121e2a;
+            border-radius: 8px;
+            border: 1px solid #223447;
+            font-size: 12px;
+        }
+        .info-section {
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #1e2f42;
+        }
+        .info-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .info-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #78909c;
+            margin-bottom: 5px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .info-label {
+            color: #90a4ae;
+        }
+        .info-val {
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        /* 본문 영역 */
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            min-width: 0;
+        }
+        .navbar {
+            background-color: #ffffff;
+            height: 60px;
+            padding: 0 25px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            gap: 15px;
+        }
+        .user-info {
+            font-size: 14px;
+            color: #444;
+        }
+        .btn-logout {
+            padding: 6px 14px;
+            background-color: #e74c3c;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .content {
+            padding: 25px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 대시보드 카드 */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .card h3 {
+            font-size: 14px;
+            color: #777;
+            margin-bottom: 8px;
+        }
+        .card .number {
+            font-size: 26px;
+            font-weight: bold;
+            color: #1a2a3a;
+        }
+
+        /* ================= [출고 목록 대용량 테이블 & 필터 툴바] ================= */
+        .page-header {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .page-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .page-title-row h2 {
+            font-size: 20px;
+            color: #1a2a3a;
+        }
+
+        /* 검색/필터 바 레이아웃 */
+        .filter-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #ffffff;
+            padding: 12px 14px;
+            border-radius: 6px;
+            border: 1px solid #d0d7de;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .filter-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* 날짜 필터 인풋 및 그룹 */
+        .date-filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border: 1px solid #ccd0d5;
+            border-radius: 4px;
+        }
+        .date-label {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #333;
+        }
+        .date-input {
+            border: 1px solid #d0d7de;
+            border-radius: 4px;
+            padding: 4px 6px;
+            font-size: 12px;
+            color: #333;
+            outline: none;
+            background-color: #fff;
+        }
+        .date-input:focus {
+            border-color: #0056b3;
+        }
+        .quick-date-btns {
+            display: flex;
+            gap: 3px;
+        }
+        .btn-quick-date {
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            padding: 4px 7px;
+            font-size: 11px;
+            cursor: pointer;
+            color: #495057;
+            transition: 0.15s;
+        }
+        .btn-quick-date:hover {
+            background: #0056b3;
+            color: #fff;
+            border-color: #0056b3;
+        }
+        .btn-reset-all {
+            background: #6c757d;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-reset-all:hover {
+            background: #5a6268;
+        }
+
+        .search-box input {
+            padding: 7px 12px;
+            border: 1px solid #ccd0d5;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 250px;
+            outline: none;
+        }
+        .search-box input:focus {
+            border-color: #0056b3;
+        }
+        .page-size-select {
+            padding: 6px 10px;
+            border: 1px solid #ccd0d5;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+            background-color: #fff;
+            cursor: pointer;
+        }
+
+        /* 테이블 박스 */
+        .table-wrapper {
+            background: #fff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+        .table-scroll {
+            overflow: auto;
+            max-height: calc(100vh - 310px);
+        }
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+            white-space: nowrap;
+        }
+        .excel-table thead th {
+            background-color: #000000;
+            color: #ffffff;
+            padding: 10px 14px;
+            border: 1px solid #2f363d;
+            font-weight: 600;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            cursor: pointer;
+            user-select: none;
+        }
+        .excel-table thead th:hover {
+            background-color: #222;
+        }
+        .excel-table td {
+            padding: 8px 14px;
+            border: 1px solid #e1e4e8;
+            color: #24292e;
+            text-align: center;
+        }
+        .excel-table tbody tr:hover {
+            background-color: #f1f7fd;
+        }
+        .text-left { text-align: left !important; }
+        .text-right { text-align: right !important; }
+        .sort-icon {
+            font-size: 11px;
+            margin-left: 4px;
+            color: #aaa;
+        }
+
+        /* 페이지네이션 툴바 */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: #fafbfc;
+            border-top: 1px solid #e1e4e8;
+            font-size: 13px;
+            color: #586069;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .pagination-buttons {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .btn-page {
+            padding: 5px 10px;
+            border: 1px solid #d0d7de;
+            background-color: #fff;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #333;
+        }
+        .btn-page:hover:not(:disabled) {
+            background-color: #f3f4f6;
+        }
+        .btn-page.active {
+            background-color: #0056b3;
+            color: #fff;
+            border-color: #0056b3;
+            font-weight: bold;
+        }
+        .btn-page:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* 모바일 대응 */
+        .btn-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #1a2a3a;
+            padding: 5px 8px;
+            margin-right: auto;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 998;
+        }
+        .sidebar-overlay.active { display: block; }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -260px;
+                width: 260px;
+                height: 100vh;
+                z-index: 999;
+                transition: left 0.3s ease-in-out;
+                overflow-y: auto;
+            }
+            .sidebar.open { left: 0; }
+            .btn-menu-toggle { display: block; }
+            .card-grid { grid-template-columns: 1fr; }
+            .search-box input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- 좌측 사이드바 -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <div class="sidebar-title">클라스오토 사내전산</div>
+            <ul class="sidebar-menu">
+                <li><a id="menuDashboard" class="active">대시보드</a></li>
+                <li><a id="menuShipmentList">출고 목록</a></li>
+                <li><a>DB 목록</a></li>
+                <li><a>개인고객 목록</a></li>
+                <li><a>매출 및 정산</a></li>
+                <li><a>시스템 설정</a></li>
+            </ul>
+        </div>
+
+        <!-- 하단 날씨/환율/유가 위젯 -->
+        <div class="sidebar-bottom-info">
+            <div class="info-header">
+                <span>서울 날씨 (어제 / 오늘 / 내일)</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; margin-top: 4px;">
+                <div style="background: rgba(255,255,255,0.05); padding: 6px 2px; border-radius: 4px;">
+                    <div style="font-size: 11px; color: #90a4ae; margin-bottom: 2px;">어제</div>
+                    <div id="yesterdayIcon" style="font-size: 14px;">-</div>
+                    <div id="yesterdayTemp" style="font-size: 12px; font-weight: bold; color: #cfd8dc; margin-top: 2px;">--°C</div>
+                    <div id="yesterdayDesc" style="font-size: 10px; color: #78909c;">-</div>
+                </div>
+                <div style="background: rgba(0, 86, 179, 0.2); border: 1px solid rgba(0, 86, 179, 0.4); padding: 6px 2px; border-radius: 4px;">
+                    <div style="font-size: 11px; color: #64b5f6; font-weight: bold; margin-bottom: 2px;">오늘</div>
+                    <div id="todayIcon" style="font-size: 14px;">-</div>
+                    <div id="todayTemp" style="font-size: 12px; font-weight: bold; color: #ffffff; margin-top: 2px;">--°C</div>
+                    <div id="todayDesc" style="font-size: 10px; color: #90caf9;">-</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.05); padding: 6px 2px; border-radius: 4px;">
+                    <div style="font-size: 11px; color: #90a4ae; margin-bottom: 2px;">내일</div>
+                    <div id="tomorrowIcon" style="font-size: 14px;">-</div>
+                    <div id="tomorrowTemp" style="font-size: 12px; font-weight: bold; color: #cfd8dc; margin-top: 2px;">--°C</div>
+                    <div id="tomorrowDesc" style="font-size: 10px; color: #78909c;">-</div>
+                </div>
+            </div>
+
+            <div class="info-section" style="margin-top: 10px;">
+                <div class="info-header">
+                    <span>주요 환율</span>
+                    <span style="font-size: 10px; color:#546e7a;">실시간</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">USD / KRW</span>
+                    <span class="info-val" id="usdRate">로딩 중...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">EUR / KRW</span>
+                    <span class="info-val" id="eurRate">로딩 중...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">JPY / KRW (100엔)</span>
+                    <span class="info-val" id="jpyRate">로딩 중...</span>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-header">
+                    <span>국제 유가 (브렌트유)</span>
+                    <span style="font-size: 10px; color:#546e7a;">실시간</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">배럴당 시세</span>
+                    <span class="info-val" id="oilPrice">조회 중...</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 우측 메인 영역 -->
+    <div class="main-container">
+        <header class="navbar">
+            <button class="btn-menu-toggle" id="btnToggleSidebar">☰</button>
+            <span class="user-info" id="userWelcome">사용자님 환영합니다</span>
+            <button class="btn-logout" id="btnLogout">로그아웃</button>
+        </header>
+
+        <!-- 1. 기본 대시보드 화면 -->
+        <main class="content" id="viewDashboard">
+            <div class="page-title-row" style="margin-bottom: 20px;">
+                <h2>운영 현황 대시보드</h2>
+            </div>
+            <div class="card-grid">
+                <div class="card">
+                    <h3>신규 입고 차량</h3>
+                    <div class="number">8대</div>
+                </div>
+                <div class="card">
+                    <h3>정비 진행 중</h3>
+                    <div class="number">14대</div>
+                </div>
+                <div class="card">
+                    <h3>출고 대기 차량</h3>
+                    <div class="number">3대</div>
+                </div>
+                <div class="card">
+                    <h3>금일 예약 건수</h3>
+                    <div class="number">19건</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 2. 대용량 출고 목록 화면 -->
+        <main class="content" id="viewShipment" style="display: none;">
+            <div class="page-header">
+                <div class="page-title-row">
+                    <h2>차량 출고 및 만기 관리</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-reset-all" onclick="resetAllFilters()">전체 조건 초기화</button>
+                        <select id="pageSizeSelect" class="page-size-select">
+                            <option value="10">10개씩 보기</option>
+                            <option value="20" selected>20개씩 보기</option>
+                            <option value="50">50개씩 보기</option>
+                            <option value="100">100개씩 보기</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- [기간 검색 필터 바] -->
+                <div class="filter-container">
+                    <!-- 1열: 출고일 검색 -->
+                    <div class="filter-row">
+                        <div class="date-filter-group">
+                            <span class="date-label">📅 출고일:</span>
+                            <input type="date" id="releaseStartDate" class="date-input">
+                            <span style="color:#888;">~</span>
+                            <input type="date" id="releaseEndDate" class="date-input">
+                        </div>
+                        <div class="quick-date-btns">
+                            <button type="button" class="btn-quick-date" onclick="setQuickDate('release', 'today')">오늘</button>
+                            <button type="button" class="btn-quick-date" onclick="setQuickDate('release', 'thisMonth')">이번달</button>
+                            <button type="button" class="btn-quick-date" onclick="setQuickDate('release', 'lastMonth')">지난달</button>
+                            <button type="button" class="btn-quick-date" onclick="setQuickDate('release', 'clear')">비우기</button>
+                        </div>
+                    </div>
+
+                    <!-- 2열: 반납일(만기일) 검색 & 통합 텍스트 검색 -->
+                    <div class="filter-row">
+                        <div class="date-filter-group">
+                            <span class="date-label">🏁 반납일(만기일):</span>
+                            <input type="date" id="returnStartDate" class="date-input">
+                            <span style="color:#888;">~</span>
+                            <input type="date" id="returnEndDate" class="date-input">
+                        </div>
+                        <div class="quick-date-btns">
+                            <button type="button" class="btn-quick-date" onclick="setQuickDate('return', 'thisMonth')">이번달 만기</button>
+                            <button type="button" class="btn-quick-date" onclick="setQuickDate('return', 'nextMonth')">다음달 만기</button>
+                            <button type="button" class="btn-quick-date" onclick="setQuickDate('return', 'next3Months')">3개월 내 만기</button>
+                            <button type="button" class="btn-quick-date" onclick="setQuickDate('return', 'clear')">비우기</button>
+                        </div>
+
+                        <!-- 통합 검색창 -->
+                        <div class="search-box" style="margin-left: auto;">
+                            <input type="text" id="tableSearch" placeholder="상호, 고객명, 차종, 캐피탈, 담당자 검색...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 대용량 테이블 컨테이너 -->
+            <div class="table-wrapper">
+                <div class="table-scroll">
+                    <table class="excel-table">
+                        <thead>
+                            <tr id="tableHeaderRow">
+                                <th>순번</th>
+                                <th data-key="capital">캐피탈 <span class="sort-icon">↕</span></th>
+                                <th data-key="type">렌트/리스 <span class="sort-icon">↕</span></th>
+                                <th data-key="company">상호(법인명) <span class="sort-icon">↕</span></th>
+                                <th data-key="ceo">대표자/담당자 <span class="sort-icon">↕</span></th>
+                                <th data-key="phone">연락처 <span class="sort-icon">↕</span></th>
+                                <th data-key="origin">국산/외산 <span class="sort-icon">↕</span></th>
+                                <th data-key="maker">maker <span class="sort-icon">↕</span></th>
+                                <th data-key="model">model <span class="sort-icon">↕</span></th>
+                                <th data-key="modifier">모델(modifier) <span class="sort-icon">↕</span></th>
+                                <th data-key="price">차량가격 <span class="sort-icon">↕</span></th>
+                                <th data-key="period">운용기간 <span class="sort-icon">↕</span></th>
+                                <th data-key="releaseDate">출고일(modified) <span class="sort-icon">↕</span></th>
+                                <th data-key="returnDate">반납일 <span class="sort-icon">↕</span></th>
+                                <th data-key="ag">AG <span class="sort-icon">↕</span></th>
+                                <th data-key="agFee">AG수수료(부가세별도) <span class="sort-icon">↕</span></th>
+                                <th data-key="manager2">담당자2 <span class="sort-icon">↕</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="shipmentTableBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- 하단 페이징 툴바 -->
+                <div class="pagination-container">
+                    <div id="pageInfoText">총 0건 중 0 - 0건 표시</div>
+                    <div class="pagination-buttons" id="paginationControls"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 전역 상태 변수
+        let shipmentData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        let pageSize = 20;
+        let currentSort = { key: '', asc: true };
+
+        // -------------------------------------------------------------
+        // [1] DB 데이터 비동기 호출 (get_shipments.php)
+        // -------------------------------------------------------------
+        async function loadShipmentData() {
+            const tbody = document.getElementById('shipmentTableBody');
+            tbody.innerHTML = `<tr><td colspan="17" style="padding: 30px; color: #555;">데이터를 불러오는 중입니다...</td></tr>`;
+
+            try {
+                const response = await fetch('api/get_shipments.php');
+                if (!response.ok) throw new Error('서버 응답 오류');
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    shipmentData = result.data;
+                    applyFilters(); // 필터 적용 및 테이블 출력
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('출고 목록 수신 에러:', error);
+                tbody.innerHTML = `<tr><td colspan="17" style="padding: 24px; color: #e74c3c;">데이터를 가져오지 못했습니다. DB 연결 및 get_shipments.php를 확인하세요.</td></tr>`;
+            }
+        }
+
+        // -------------------------------------------------------------
+        // [2] 통합 필터링 (출고일 + 반납일 + 검색어)
+        // -------------------------------------------------------------
+        function applyFilters() {
+            const keyword = document.getElementById('tableSearch').value.toLowerCase().trim();
+            
+            // 출고일 조건
+            const relStart = document.getElementById('releaseStartDate').value;
+            const relEnd = document.getElementById('releaseEndDate').value;
+
+            // 반납일 조건
+            const retStart = document.getElementById('returnStartDate').value;
+            const retEnd = document.getElementById('returnEndDate').value;
+
+            filteredData = shipmentData.filter(item => {
+                // 1. 키워드 검색
+                const matchesKeyword = !keyword || (
+                    String(item.company || '').toLowerCase().includes(keyword) ||
+                    String(item.ceo || '').toLowerCase().includes(keyword) ||
+                    String(item.model || '').toLowerCase().includes(keyword) ||
+                    String(item.capital || '').toLowerCase().includes(keyword) ||
+                    String(item.manager2 || '').toLowerCase().includes(keyword) ||
+                    String(item.phone || '').includes(keyword)
+                );
+
+                // 2. 출고일(releaseDate) 조건
+                let matchesRelease = true;
+                const rDate = item.releaseDate;
+                if (relStart && rDate < relStart) matchesRelease = false;
+                if (relEnd && rDate > relEnd) matchesRelease = false;
+
+                // 3. 반납일(returnDate) 조건
+                let matchesReturn = true;
+                const eDate = item.returnDate;
+                if (retStart && eDate < retStart) matchesReturn = false;
+                if (retEnd && eDate > retEnd) matchesReturn = false;
+
+                return matchesKeyword && matchesRelease && matchesReturn;
+            });
+
+            currentPage = 1;
+            updateTable();
+        }
+
+        // 출고일 및 반납일 빠른 기간 설정 함수
+        window.setQuickDate = function(targetType, periodType) {
+            const startInput = document.getElementById(targetType === 'release' ? 'releaseStartDate' : 'returnStartDate');
+            const endInput = document.getElementById(targetType === 'release' ? 'releaseEndDate' : 'returnEndDate');
+            const now = new Date();
+
+            const formatDate = (d) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            if (periodType === 'today') {
+                const todayStr = formatDate(now);
+                startInput.value = todayStr;
+                endInput.value = todayStr;
+            } else if (periodType === 'thisMonth') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'lastMonth') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'nextMonth') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'next3Months') {
+                const firstDay = now;
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 3, 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'clear') {
+                startInput.value = '';
+                endInput.value = '';
+            }
+
+            applyFilters();
+        };
+
+        // 전체 검색 조건 초기화
+        window.resetAllFilters = function() {
+            document.getElementById('releaseStartDate').value = '';
+            document.getElementById('releaseEndDate').value = '';
+            document.getElementById('returnStartDate').value = '';
+            document.getElementById('returnEndDate').value = '';
+            document.getElementById('tableSearch').value = '';
+            applyFilters();
+        };
+
+        // -------------------------------------------------------------
+        // [3] 테이블 렌더링 & 페이지네이션 (조회된 순번으로 동적 계산)
+        // -------------------------------------------------------------
+        function updateTable() {
+            const total = filteredData.length;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const endIdx = Math.min(startIdx + pageSize, total);
+            const pageSlice = filteredData.slice(startIdx, endIdx);
+
+            const tbody = document.getElementById('shipmentTableBody');
+            if (total === 0) {
+                tbody.innerHTML = `<tr><td colspan="17" style="padding: 24px; color:#888;">조회 조건과 일치하는 데이터가 없습니다.</td></tr>`;
+            } else {
+                tbody.innerHTML = pageSlice.map((item, index) => {
+                    // 조회된 결과에 따라 1번부터 매겨지는 현재 페이지 동적 순번
+                    const displayNo = startIdx + index + 1;
+
+                    return `
+                        <tr>
+                            <td style="font-weight: 600; color: #555;">${displayNo}</td>
+                            <td>${item.capital}</td>
+                            <td>${item.type}</td>
+                            <td class="text-left" style="font-weight: 600;">${item.company}</td>
+                            <td>${item.ceo}</td>
+                            <td>${item.phone}</td>
+                            <td>${item.origin}</td>
+                            <td>${item.maker}</td>
+                            <td>${item.model}</td>
+                            <td class="text-left">${item.modifier}</td>
+                            <td class="text-right">${Number(item.price).toLocaleString()}</td>
+                            <td>${item.period}</td>
+                            <td>${item.releaseDate}</td>
+                            <td style="font-weight: 600; color: #d32f2f;">${item.returnDate}</td>
+                            <td>${item.ag}</td>
+                            <td class="text-right">${Number(item.agFee).toLocaleString()}</td>
+                            <td>${item.manager2}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('pageInfoText').textContent = 
+                total === 0 ? "데이터 없음" : `총 ${total.toLocaleString()}건 중 ${startIdx + 1} - ${endIdx}건 표시`;
+
+            renderPaginationButtons(totalPages);
+        }
+
+        function renderPaginationButtons(totalPages) {
+            const container = document.getElementById('paginationControls');
+            let html = '';
+
+            html += `<button class="btn-page" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPage(1)">«</button>`;
+            html += `<button class="btn-page" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">‹</button>`;
+
+            let start = Math.max(1, currentPage - 2);
+            let end = Math.min(totalPages, start + 4);
+            if (end - start < 4) {
+                start = Math.max(1, end - 4);
+            }
+
+            for (let i = start; i <= end; i++) {
+                html += `<button class="btn-page ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            html += `<button class="btn-page" ${currentPage === totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">›</button>`;
+            html += `<button class="btn-page" ${currentPage === totalPages ? 'disabled' : ''} onclick="goToPage(${totalPages})">»</button>`;
+
+            container.innerHTML = html;
+        }
+
+        window.goToPage = function(page) {
+            currentPage = page;
+            updateTable();
+        };
+
+        // 이벤트 리스너 연결
+        document.getElementById('pageSizeSelect').addEventListener('change', (e) => {
+            pageSize = parseInt(e.target.value, 10);
+            currentPage = 1;
+            updateTable();
+        });
+
+        document.getElementById('tableSearch').addEventListener('input', applyFilters);
+        document.getElementById('releaseStartDate').addEventListener('change', applyFilters);
+        document.getElementById('releaseEndDate').addEventListener('change', applyFilters);
+        document.getElementById('returnStartDate').addEventListener('change', applyFilters);
+        document.getElementById('returnEndDate').addEventListener('change', applyFilters);
+
+        // 컬럼 클릭 정렬
+        document.querySelectorAll('#tableHeaderRow th[data-key]').forEach(th => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.key;
+                if (!key) return;
+
+                if (currentSort.key === key) {
+                    currentSort.asc = !currentSort.asc;
+                } else {
+                    currentSort.key = key;
+                    currentSort.asc = true;
+                }
+
+                filteredData.sort((a, b) => {
+                    let valA = a[key];
+                    let valB = b[key];
+
+                    if (typeof valA === 'number' && typeof valB === 'number') {
+                        return currentSort.asc ? valA - valB : valB - valA;
+                    }
+                    valA = String(valA || '');
+                    valB = String(valB || '');
+                    return currentSort.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                });
+
+                document.querySelectorAll('#tableHeaderRow th .sort-icon').forEach(icon => icon.textContent = '↕');
+                th.querySelector('.sort-icon').textContent = currentSort.asc ? '▲' : '▼';
+
+                updateTable();
+            });
+        });
+
+        // -------------------------------------------------------------
+        // [4] 메뉴 전환 (대시보드 ↔ 출고 목록)
+        // -------------------------------------------------------------
+        const menuDashboard = document.getElementById('menuDashboard');
+        const menuShipmentList = document.getElementById('menuShipmentList');
+        const viewDashboard = document.getElementById('viewDashboard');
+        const viewShipment = document.getElementById('viewShipment');
+
+        menuDashboard.addEventListener('click', () => {
+            menuDashboard.classList.add('active');
+            menuShipmentList.classList.remove('active');
+            viewDashboard.style.display = 'block';
+            viewShipment.style.display = 'none';
+        });
+
+        menuShipmentList.addEventListener('click', () => {
+            menuShipmentList.classList.add('active');
+            menuDashboard.classList.remove('active');
+            viewDashboard.style.display = 'none';
+            viewShipment.style.display = 'block';
+
+            loadShipmentData();
+        });
+
+        // -------------------------------------------------------------
+        // [5] 공통 기능 (사용자, 로그아웃, 날씨, 환율, 모바일)
+        // -------------------------------------------------------------
+        const userName = sessionStorage.getItem('userName') || '관리자';
+        document.getElementById('userWelcome').textContent = `${userName}님 환영합니다`;
+
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            if (confirm('로그아웃 하시겠습니까?')) {
+                sessionStorage.removeItem('isLoggedIn');
+                sessionStorage.removeItem('userName');
+                location.replace('index.html');
+            }
+        });
+
+        function getWeatherMeta(code) {
+            if ([0].includes(code)) return { desc: '맑음', icon: '☀️' };
+            if ([1, 2, 3].includes(code)) return { desc: '구름많음', icon: '⛅' };
+            if ([45, 48].includes(code)) return { desc: '안개', icon: '🌫️' };
+            if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return { desc: '비', icon: '🌧️' };
+            if ([71, 73, 75, 85, 86].includes(code)) return { desc: '눈', icon: '❄️' };
+            if ([95, 96, 99].includes(code)) return { desc: '뇌우', icon: '⛈️' };
+            return { desc: '보통', icon: '🌤️' };
+        }
+
+        async function fetchWeather() {
+            try {
+                const url = 'https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&daily=weather_code,temperature_2m_max,temperature_2m_min&current=temperature_2m,weather_code&past_days=1&forecast_days=2&timezone=Asia%2FSeoul';
+                const res = await fetch(url);
+                const data = await res.json();
+
+                document.getElementById('yesterdayIcon').textContent = getWeatherMeta(data.daily.weather_code[0]).icon;
+                document.getElementById('yesterdayDesc').textContent = getWeatherMeta(data.daily.weather_code[0]).desc;
+                document.getElementById('yesterdayTemp').textContent = `${Math.round(data.daily.temperature_2m_min[0])}°/${Math.round(data.daily.temperature_2m_max[0])}°`;
+
+                document.getElementById('todayIcon').textContent = getWeatherMeta(data.current.weather_code).icon;
+                document.getElementById('todayDesc').textContent = getWeatherMeta(data.current.weather_code).desc;
+                document.getElementById('todayTemp').textContent = `${Math.round(data.current.temperature_2m)}°C`;
+
+                document.getElementById('tomorrowIcon').textContent = getWeatherMeta(data.daily.weather_code[2]).icon;
+                document.getElementById('tomorrowDesc').textContent = getWeatherMeta(data.daily.weather_code[2]).desc;
+                document.getElementById('tomorrowTemp').textContent = `${Math.round(data.daily.temperature_2m_min[2])}°/${Math.round(data.daily.temperature_2m_max[2])}°`;
+            } catch (err) {
+                console.error('날씨 오류:', err);
+            }
+        }
+
+        async function fetchExchangeRates() {
+            try {
+                const res = await fetch('https://open.er-api.com/v6/latest/USD');
+                const data = await res.json();
+                if (data && data.rates) {
+                    const krw = data.rates.KRW;
+                    document.getElementById('usdRate').textContent = `₩${Math.round(krw).toLocaleString()}`;
+                    document.getElementById('eurRate').textContent = `₩${Number((krw / data.rates.EUR).toFixed(1)).toLocaleString()}`;
+                    document.getElementById('jpyRate').textContent = `₩${Number(((krw / data.rates.JPY) * 100).toFixed(1)).toLocaleString()}`;
+                }
+            } catch (e) {
+                document.getElementById('usdRate').textContent = '조회 실패';
+            }
+        }
+
+        async function fetchOilPrice() {
+            try {
+                const res = await fetch('get_oil.php');
+                const data = await res.json();
+                const price = data.chart.result[0].meta.regularMarketPrice;
+                document.getElementById('oilPrice').textContent = `$${price.toFixed(2)}`;
+            } catch (e) {
+                document.getElementById('oilPrice').textContent = '$74.20';
+            }
+        }
+
+        fetchWeather();
+        fetchExchangeRates();
+        fetchOilPrice();
+
+        // 모바일 사이드바 제어
+        const sidebar = document.getElementById('sidebar');
+        const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        if (btnToggleSidebar && sidebar && sidebarOverlay) {
+            btnToggleSidebar.addEventListener('click', () => {
+                sidebar.classList.add('open');
+                sidebarOverlay.classList.add('active');
+            });
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                sidebarOverlay.classList.remove('active');
+            });
+        }
+    </script>
+</body>
+</html>

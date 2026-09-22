@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>클라스오토 사내전산 - 로그인</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        body {
+            background-color: #f4f6f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 380px;
+            padding: 32px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .login-header h2 {
+            color: #1a2a3a;
+            font-size: 22px;
+            margin-bottom: 6px;
+        }
+        .login-header p {
+            color: #888;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #555;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+        }
+        .form-group input:focus {
+            border-color: #0056b3;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background-color: #0056b3;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .btn-submit:hover {
+            background-color: #004494;
+        }
+        .error-message {
+            margin-top: 12px;
+            color: #e74c3c;
+            font-size: 13px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="login-header">
+            <h2>클라스오토 사내전산</h2>
+            <p>KLASSAUTO INTRANET</p>
+        </div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="userId">아이디 / 사번</label>
+                <input type="text" id="userId" placeholder="아이디를 입력하세요" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="userPw">비밀번호</label>
+                <input type="password" id="userPw" placeholder="비밀번호를 입력하세요" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-submit">로그인</button>
+            <div id="errorMsg" class="error-message">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+        </form>
+    </div>
+
+    <script>
+        // 이미 로그인된 상태라면 바로 대시보드로 이동
+        if (sessionStorage.getItem('isLoggedIn') === 'true') {
+            location.href = 'dashboard.html';
+        }
+
+        const loginForm = document.getElementById('loginForm');
+        const errorMsg = document.getElementById('errorMsg');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const userId = document.getElementById('userId').value.trim();
+            const userPw = document.getElementById('userPw').value.trim();
+
+            // 테스트 계정 (실제 환경에서는 서버 인증 API 호출)
+            if (userId === 'klass11' && userPw === 'wlsgml1204') {
+                // 로그인 플래그 및 사용자 정보 저장
+                sessionStorage.setItem('isLoggedIn', 'true');
+                sessionStorage.setItem('userName', '관리자');
+                
+                // 대시보드 페이지로 이동
+                location.href = 'dashboard.html';
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
