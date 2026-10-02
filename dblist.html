@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/pagination.css">
+    <link rel="stylesheet" href="css/filter.css">
+    <link rel="stylesheet" href="css/table.css">
+    <title>클라스오토 사내전산 - DB 목록</title>
+
+    <script>
+        if (sessionStorage.getItem('isLoggedIn') !== 'true') {
+            alert('로그인이 필요한 페이지입니다.');
+            location.replace('index.html');
+        }
+    </script>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- [공통 사이드바가 삽입되는 컨테이너] -->
+    <div id="sidebarContainer"></div>
+
+    <!-- 우측 메인 영역 -->
+    <div class="main-container">
+        <header class="navbar">
+            <button class="btn-menu-toggle" id="btnToggleSidebar">☰</button>
+            <span class="user-info" id="userWelcome">사용자님 환영합니다</span>
+            <button class="btn-logout" id="btnLogout">로그아웃</button>
+        </header>
+
+        <!-- 디비 목록 화면 -->
+        <main class="content">
+            <div class="page-header">
+                <div class="page-title-row">
+                    <h2>고객 상담 DB 목록</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-reset-all" onclick="openCreateModal()">+ DB 생성</button>
+                        <button type="button" id="btnDeleteSelected" class="btn-reset-all" style="color:#b42318;" disabled>선택 삭제 (0)</button>
+                        <button type="button" id="btnSendSms" class="btn-reset-all" disabled>선택한 고객에게 문자 보내기 (0)</button>
+                        <button type="button" class="btn-reset-all" onclick="resetAllFilters()">전체 조건 초기화</button>
+                        <select id="pageSizeSelect" class="page-size-select">
+                            <option value="10">10개씩 보기</option>
+                            <option value="20" selected>20개씩 보기</option>
+                            <option value="50">50개씩 보기</option>
+                            <option value="100">100개씩 보기</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-container">
+                    <select id="dateTypeSelect" class="date-type-select">
+                        <option value="ask">📅 접수일 기준</option>
+                        <option value="return">🏁 반납일 기준</option>
+                    </select>
+
+                    <div class="date-filter-group">
+                        <input type="date" id="filterStartDate" class="date-input">
+                        <span style="color:#888;">~</span>
+                        <input type="date" id="filterEndDate" class="date-input">
+                    </div>
+
+                    <div class="quick-date-btns">
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('today')">오늘</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('lastMonth')">지난달</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('thisMonth')">이번달</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('nextMonth')">다음달</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('next3Months')">3개월</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('clear')">기간 비우기</button>
+                    </div>
+
+                    <div class="search-box" style="margin-left: auto;">
+                        <input type="text" id="searchInput" placeholder="고객명, 휴대폰번호, 차종, 출처, 담당자 검색......">
+                    </div>
+                </div>                
+            </div>            
+            
+
+            <div class="table-wrapper">
+                <div class="table-scroll">
+                    <table class="excel-table">
+                        <thead>
+                            <tr>
+                                <th class="col-checkbox">
+                                    <input type="checkbox" id="checkAll" title="전체 선택">
+                                </th>
+                                <th>순번</th>
+                                <th class="yellow">휴대폰번호</th>
+                                <th class="yellow">고객명</th>
+                                <th>년</th>
+                                <th>월</th>
+                                <th>접수일</th>
+                                <th>국산/외산</th>
+                                <th>메이커</th>
+                                <th>차종명</th>
+                                <th class="yellow">희망차종</th>
+                                <th class="yellow">출처2</th>
+                                <th class="yellow">출처</th>
+                                <th>렌트리스</th>
+                                <th class="yellow">담당자</th>
+                                <th>출고여부</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dbTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container">
+                    <div id="pageInfoText">총 0건 중 0 - 0건 표시</div>
+                    <div class="pagination-buttons" id="paginationControls"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 상세 편집 모달 -->
+    <div class="modal-overlay" id="editModalOverlay">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3 id="editModalTitle">고객 DB 상세 정보</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="editForm" onsubmit="handleFormSubmit(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+                    <div class="modal-grid">
+                        <div class="form-group">
+                            <label>고객명 *</label>
+                            <input type="text" id="editName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>휴대폰번호</label>
+                            <input type="text" id="editPhone">
+                        </div>
+                        <div class="form-group">
+                            <label>접수일</label>
+                            <input type="date" id="editaskDate">
+                        </div>
+                        <div class="form-group">
+                            <label>메이커</label>
+                            <input type="text" id="editMaker">
+                        </div>
+                        <div class="form-group">
+                            <label>차종명</label>
+                            <input type="text" id="editCarName">
+                        </div>
+                        <div class="form-group">
+                            <label>희망차종</label>
+                            <input type="text" id="editHopeCar">
+                        </div>
+                        <div class="form-group">
+                            <label>렌트리스</label>
+                            <input type="text" id="editRentLease">
+                        </div>
+                        <div class="form-group">
+                            <label>출처</label>
+                            <input type="text" id="editSource">
+                        </div>
+                        <div class="form-group">
+                            <label>상담원</label>
+                            <input type="text" id="editConsultant">
+                        </div>
+                        <div class="form-group">
+                            <label>출고여부</label>
+                            <input type="text" id="editReleaseStatus">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal-cancel" onclick="closeModal()">취소</button>
+                    <button type="submit" id="editSubmitButton" class="btn-modal-save">저장 완료</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 사이드바 로더 연결 -->
+    <script src="sidebar.js"></script>
+    <script src="js/pagination.js"></script>
+
+    <script>
+        // 공통 사이드바 로드 (DB 목록 활성화)
+        initCommonSidebar('navDbList');
+
+        // DB에서 불러온 고객 상담 데이터
+        let dbData = [];
+
+        let filteredData = [...dbData];
+        let selectedRowIds = new Set();
+        let currentPage = 1;
+        let pageSize = 20;
+
+        // ==========================================
+        // inner_dblist 테이블에서 데이터 불러오기
+        // ==========================================
+        async function loadDbData() {
+            try {
+                const response = await fetch('api/get_dblist.php', {
+                    method: 'GET',
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP 오류: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message || 'DB 데이터를 불러오지 못했습니다.');
+                }
+
+                dbData = result.data || [];
+                selectedRowIds.clear();
+                filteredData = [...dbData];
+                currentPage = 1;
+                renderTable();
+
+            } catch (error) {
+                console.error('DB 조회 오류:', error);
+                document.getElementById('dbTableBody').innerHTML =
+                    `<tr><td colspan="16" style="padding:24px;color:#d00;">
+                        DB 데이터를 불러오지 못했습니다.<br>${error.message}
+                    </td></tr>`;
+
+                document.getElementById('pageInfoText').textContent = 'DB 조회 실패';
+            }
+        }
+
+        function renderTable() {
+            const total = filteredData.length;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const endIdx = Math.min(startIdx + pageSize, total);
+            const pageSlice = filteredData.slice(startIdx, endIdx);
+
+            const tbody = document.getElementById('dbTableBody');
+            const checkAll = document.getElementById('checkAll');
+
+            if (total === 0) {
+                tbody.innerHTML = `<tr><td colspan="16" style="padding: 24px; color:#888;">조회된 데이터가 없습니다.</td></tr>`;
+                if (checkAll) checkAll.checked = false;
+            } else {
+                tbody.innerHTML = pageSlice.map((item, idx) => {
+                    const displayNo = total - (startIdx + idx);
+                    const isChecked = selectedRowIds.has(item.id);
+
+                    return `
+                        <tr class="${isChecked ? 'row-selected' : ''}" data-id="${item.id}">
+                            <td class="col-checkbox" onclick="event.stopPropagation()">
+                                <input type="checkbox" class="row-checkbox" data-id="${item.id}" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow(${item.id}, this.checked)">
+                            </td>
+                            <td style="font-weight:600; color:#555;">${displayNo}</td>
+                            <td>${item.phone || '-'}</td>
+                            <td>
+                                <span class="link-name" onclick="openModal(${item.id})" title="클릭하여 상세정보 수정">${item.name || '-'}</span>
+                            </td>
+                            <td>${item.year || '-'}</td>
+                            <td>${item.month || '-'}</td>
+                            <td>${item.askDate || '-'}</td>
+                            <td>${item.origin || '-'}</td>
+                            <td>${item.maker || '-'}</td>
+                            <td>${item.carName || '-'}</td>
+                            <td style="font-weight: 600;">${item.hopeCar || '-'}</td>
+                            <td>${item.source2 || '-'}</td>
+                            <td>${item.source || '-'}</td>
+                            <td>${item.rentLease || '-'}</td>
+                            <td>${item.consultant || '-'}</td>
+                            <td>${item.releaseStatus || '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                syncCheckAll(pageSlice);
+            }
+
+            document.getElementById('pageInfoText').textContent = total === 0 ? "데이터 없음" : `총 ${total}건 중 ${startIdx + 1} - ${endIdx}건 표시`;
+            renderPagination(totalPages);
+            updateSmsButton();
+        }
+
+        function updateSmsButton() {
+            const button = document.getElementById('btnSendSms');
+            button.textContent = `선택한 고객에게 문자 보내기 (${selectedRowIds.size})`;
+            button.disabled = selectedRowIds.size === 0;
+            const deleteButton = document.getElementById('btnDeleteSelected');
+            deleteButton.textContent = `선택 삭제 (${selectedRowIds.size})`;
+            deleteButton.disabled = selectedRowIds.size === 0;
+        }
+
+        document.getElementById('btnDeleteSelected').addEventListener('click', async () => {
+            const ids = [...selectedRowIds];
+            if (!ids.length) return;
+            if (!confirm(`선택한 ${ids.length}건을 DB에서 삭제할까요?\n삭제한 데이터는 되돌릴 수 없습니다.`)) return;
+
+            const button = document.getElementById('btnDeleteSelected');
+            button.disabled = true;
+            try {
+                const response = await fetch('api/delete_dblist.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                const body = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(body);
+                } catch (_) {
+                    throw new Error(`삭제 API 응답 오류 (HTTP ${response.status}). api/delete_dblist.php 파일과 PHP 오류 로그를 확인해주세요.`);
+                }
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || `삭제에 실패했습니다. (HTTP ${response.status})`);
+                }
+                selectedRowIds.clear();
+                await loadDbData();
+                alert(`${result.deletedCount}건을 삭제했습니다.`);
+            } catch (error) {
+                alert(error.message || '삭제에 실패했습니다.');
+            } finally {
+                updateSmsButton();
+            }
+        });
+
+        document.getElementById('btnSendSms').addEventListener('click', () => {
+            // 선택 상태는 페이지 이동과 검색 후에도 유지된다.
+            const selected = dbData.filter(item => selectedRowIds.has(item.id));
+            const numbers = [...new Set(selected.map(item => String(item.phone || '').replace(/[^\d+]/g, ''))
+                .filter(number => /^(?:01\d{8,9}|\+82(?:10|11|16|17|18|19)\d{7,8})$/.test(number)))];
+            const skipped = selected.length - numbers.length;
+
+            if (!numbers.length) {
+                alert('선택한 고객에게 유효한 휴대폰번호가 없습니다.');
+                return;
+            }
+            if (!confirm(`${numbers.length}개 번호로 문자 작성 화면을 여시겠습니까?${skipped ? `\n번호가 없거나 중복된 ${skipped}건은 제외됩니다.` : ''}\n문자는 작성 화면에서 직접 확인하고 발송해야 합니다.`)) return;
+
+            // 기기에 연결된 문자 앱을 연다. 브라우저만으로 문자를 자동 발송할 수는 없다.
+            location.href = `sms:${numbers.join(',')}`;
+        });
+
+        document.getElementById('checkAll').addEventListener('change', function() {
+            const isChecked = this.checked;
+            const startIdx = (currentPage - 1) * pageSize;
+            const pageSlice = filteredData.slice(startIdx, startIdx + pageSize);
+
+            pageSlice.forEach(item => {
+                if (isChecked) selectedRowIds.add(item.id);
+                else selectedRowIds.delete(item.id);
+            });
+
+            document.querySelectorAll('.row-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+                const tr = cb.closest('tr');
+                if (tr) tr.classList.toggle('row-selected', isChecked);
+            });
+            updateSmsButton();
+        });
+
+        window.setQuickDate = function(periodType) {
+            const startInput = document.getElementById('filterStartDate');
+            const endInput = document.getElementById('filterEndDate');
+            const now = new Date();
+
+            const formatDate = (d) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            if (periodType === 'today') {
+                const todayStr = formatDate(now);
+                startInput.value = todayStr;
+                endInput.value = todayStr;
+            } else if (periodType === 'lastMonth') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth()-1, 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'thisMonth') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'nextMonth') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'next3Months') {
+                const firstDay = now;
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 3, 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'clear') {
+                startInput.value = '';
+                endInput.value = '';
+            }
+
+            applyFilters();
+        };
+
+        window.toggleSelectRow = function(id, isChecked) {
+            if (isChecked) selectedRowIds.add(id);
+            else selectedRowIds.delete(id);
+
+            const tr = document.querySelector(`tr[data-id="${id}"]`);
+            if (tr) tr.classList.toggle('row-selected', isChecked);
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const pageSlice = filteredData.slice(startIdx, startIdx + pageSize);
+            syncCheckAll(pageSlice);
+            updateSmsButton();
+        };
+
+        function syncCheckAll(pageSlice) {
+            const checkAll = document.getElementById('checkAll');
+            if (!checkAll || pageSlice.length === 0) return;
+            checkAll.checked = pageSlice.every(i => selectedRowIds.has(i.id));
+        }
+
+        const editModalOverlay = document.getElementById('editModalOverlay');
+
+        window.openCreateModal = function() {
+            document.getElementById('editForm').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('editModalTitle').textContent = '새 고객 DB 생성';
+            document.getElementById('editSubmitButton').textContent = 'DB 생성';
+            document.getElementById('editaskDate').value = new Date().toLocaleDateString('sv-SE');
+            editModalOverlay.classList.add('active');
+        };
+
+        window.openModal = function(id) {
+            const item = dbData.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('editId').value = item.id;
+            document.getElementById('editName').value = item.name;
+            document.getElementById('editPhone').value = item.phone;
+            document.getElementById('editaskDate').value = item.askDate !== '-' ? item.askDate : '';
+            document.getElementById('editMaker').value = item.maker;
+            document.getElementById('editCarName').value = item.carName;
+            document.getElementById('editHopeCar').value = item.hopeCar;
+            document.getElementById('editRentLease').value = item.rentLease;
+            document.getElementById('editSource').value = item.source;
+            document.getElementById('editConsultant').value = item.consultant;
+            document.getElementById('editReleaseStatus').value = item.releaseStatus;
+
+            document.getElementById('editModalTitle').textContent = '고객 DB 상세 정보';
+            document.getElementById('editSubmitButton').textContent = '저장 완료';
+            editModalOverlay.classList.add('active');
+        };
+
+        window.closeModal = function() {
+            editModalOverlay.classList.remove('active');
+        };
+
+        window.handleFormSubmit = async function(e) {
+            e.preventDefault();
+            if (!document.getElementById('editId').value) {
+                const fields = {
+                    name: 'editName', phone: 'editPhone', askDate: 'editaskDate',
+                    maker: 'editMaker', carName: 'editCarName',
+                    hopeCar: 'editHopeCar', rentLease: 'editRentLease',
+                    source: 'editSource', consultant: 'editConsultant',
+                    releaseStatus: 'editReleaseStatus'
+                };
+                const data = Object.fromEntries(Object.entries(fields).map(([key, id]) =>
+                    [key, document.getElementById(id).value.trim()]));
+                const button = document.getElementById('editSubmitButton');
+                button.disabled = true;
+                try {
+                    const response = await fetch('api/create_dblist.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const body = await response.text();
+                    let result;
+                    try {
+                        result = JSON.parse(body);
+                    } catch (_) {
+                        throw new Error(`저장 API 응답 오류 (HTTP ${response.status}). api/create_dblist.php 파일과 PHP 오류 로그를 확인해주세요.`);
+                    }
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || 'DB 생성에 실패했습니다.');
+                    }
+                    closeModal();
+                    await loadDbData();
+                    alert('새 고객 DB가 생성되었습니다.');
+                } catch (error) {
+                    alert(error.message || 'DB 생성에 실패했습니다.');
+                } finally {
+                    button.disabled = false;
+                }
+                return;
+            }
+            const id = parseInt(document.getElementById('editId').value, 10);
+            const target = dbData.find(d => d.id === id);
+
+            if (target) {
+                target.name = document.getElementById('editName').value.trim();
+                target.phone = document.getElementById('editPhone').value.trim();
+                target.askDate = document.getElementById('editaskDate').value || '-';
+                target.maker = document.getElementById('editMaker').value.trim();
+                target.carName = document.getElementById('editCarName').value.trim();
+                target.hopeCar = document.getElementById('editHopeCar').value.trim();
+                target.rentLease = document.getElementById('editRentLease').value.trim();
+                target.source = document.getElementById('editSource').value.trim();
+                target.consultant = document.getElementById('editConsultant').value.trim();
+                target.releaseStatus = document.getElementById('editReleaseStatus').value.trim();
+
+                if (target.askDate !== '-') {
+                    const parts = target.askDate.split('-');
+                    target.year = parseInt(parts[0], 10);
+                    target.month = parseInt(parts[1], 10);
+                }
+            }
+
+            closeModal();
+            applyFilters();
+            alert('DB 정보가 수정되었습니다.');
+        };
+
+        // DB의 날짜가 YYYY-MM-DD, YYYY-MM-DD HH:mm:ss 형식이어도
+        // 날짜 부분만 안전하게 비교할 수 있도록 정규화한다.
+        function normalizeDate(value) {
+            if (!value || value === '-') return '';
+
+            const match = String(value).trim().match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+            if (!match) return '';
+
+            return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+        }
+
+        function applyFilters() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const dateType = document.getElementById('dateTypeSelect').value;
+
+            filteredData = dbData.filter(d => {
+                const matchesKeyword = !keyword || [
+                    d.name, d.phone, d.carName, d.hopeCar,
+                    d.source, d.source2, d.consultant
+                ].some(value => String(value || '').toLowerCase().includes(keyword));
+
+                // 접수일은 API의 askDate, 반납일은 returnDate를 사용한다.
+                const rawDate = dateType === 'return' ? d.returnDate : d.askDate;
+                const itemDate = normalizeDate(rawDate);
+                const matchesDate = (!startDate && !endDate) ||
+                    (itemDate && (!startDate || itemDate >= startDate) && (!endDate || itemDate <= endDate));
+
+                return matchesKeyword && matchesDate;
+            });
+
+            currentPage = 1;
+            renderTable();
+        }
+
+        // 기존 함수명을 호출하는 코드가 있어도 동작하도록 유지한다.
+        function applySearch() {
+            applyFilters();
+        }
+
+        window.resetAllFilters = function() {
+            document.getElementById('dateTypeSelect').value = 'ask';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            document.getElementById('searchInput').value = '';
+            applyFilters();
+        };
+
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('filterStartDate').addEventListener('change', applyFilters);
+        document.getElementById('filterEndDate').addEventListener('change', applyFilters);
+        document.getElementById('dateTypeSelect').addEventListener('change', applyFilters);
+        document.getElementById('pageSizeSelect').addEventListener('change', (e) => {
+            pageSize = parseInt(e.target.value, 10);
+            currentPage = 1;
+            renderTable();
+        });
+
+        window.goToPage = function(page) {
+            currentPage = page;
+            renderTable();
+        };
+
+        const userName = sessionStorage.getItem('userName') || '관리자';
+        document.getElementById('userWelcome').textContent = `${userName}님 환영합니다`;
+
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            sessionStorage.clear();
+            location.replace('index.html');
+        });
+
+        loadDbData();
+    </script>
+</body>
+</html>

@@ -107,30 +107,47 @@
     </div>
 
     <script>
-        // 이미 로그인된 상태라면 바로 대시보드로 이동
-        if (sessionStorage.getItem('isLoggedIn') === 'true') {
-            location.href = 'dashboard.html';
-        }
-
         const loginForm = document.getElementById('loginForm');
         const errorMsg = document.getElementById('errorMsg');
 
-        loginForm.addEventListener('submit', (e) => {
+        fetch('api/login.php', { credentials: 'same-origin', cache: 'no-store' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.success) {
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    sessionStorage.setItem('userName', data.name);
+                    sessionStorage.setItem('csrfToken', data.csrfToken);
+                    location.replace('dashboard.html');
+                } else {
+                    sessionStorage.clear();
+                }
+            }).catch(() => sessionStorage.clear());
+
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
-            const userId = document.getElementById('userId').value.trim();
-            const userPw = document.getElementById('userPw').value.trim();
-
-            // 테스트 계정 (실제 환경에서는 서버 인증 API 호출)
-            if (userId === 'klass11' && userPw === 'wlsgml1204') {
-                // 로그인 플래그 및 사용자 정보 저장
+            errorMsg.style.display = 'none';
+            const button = loginForm.querySelector('button[type="submit"]');
+            button.disabled = true;
+            try {
+                const response = await fetch('api/login.php', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: document.getElementById('userId').value.trim(),
+                        password: document.getElementById('userPw').value
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || '로그인에 실패했습니다.');
                 sessionStorage.setItem('isLoggedIn', 'true');
-                sessionStorage.setItem('userName', '관리자');
-                
-                // 대시보드 페이지로 이동
+                sessionStorage.setItem('userName', result.name);
+                sessionStorage.setItem('csrfToken', result.csrfToken);
                 location.href = 'dashboard.html';
-            } else {
+            } catch (error) {
+                errorMsg.textContent = error.message || '로그인에 실패했습니다.';
                 errorMsg.style.display = 'block';
+            } finally {
+                button.disabled = false;
             }
         });
     </script>
