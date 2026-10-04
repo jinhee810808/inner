@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>클라스오토 사내전산 · 사용자 대시보드</title>
+
+    <link rel="shortcut icon" href="img/logo_k_out.ico">
+    <link rel="stylesheet" href="css/pagination.css">
+    <link rel="stylesheet" href="css/filter.css">
+    <link rel="stylesheet" href="css/table.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f4f6fa;
+            color: #243247;
+            font-family: 'Nanum Gothic', '나눔고딕', Arial, sans-serif;
+            font-size: 14px;
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button:focus-visible,
+        a:focus-visible {
+            outline: 3px solid #8cb5ff;
+            outline-offset: 3px;
+        }
+
+        .main-container {
+            min-height: 100vh;
+        }
+
+        .navbar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 28px;
+            background: white;
+            border-bottom: 1px solid #e4e9f1;
+        }
+
+        .user-info {
+            margin-left: auto;
+        }
+
+        .btn-menu-toggle,
+        .btn-logout,
+        .button {
+            border: 1px solid #dce3ee;
+            background: white;
+            border-radius: 7px;
+            padding: 9px 13px;
+            color: #33445b;
+        }
+
+        .button.primary {
+            background: #2459a9;
+            color: white;
+            border-color: #2459a9;
+        }
+
+        .dashboard {
+            max-width: 1500px;
+            margin: auto;
+            padding: 30px;
+        }
+
+        .heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 25px;
+            margin: 0 0 8px;
+        }
+
+        h2 {
+            font-size: 17px;
+            margin: 0;
+        }
+
+        .muted {
+            color: #778397;
+            font-size: 12px;
+        }
+
+        .notice {
+            padding: 13px 16px;
+            background: #edf3ff;
+            color: #335c92;
+            border: 1px solid #d6e4fb;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .stat,
+        .panel {
+            background: white;
+            border: 1px solid #e1e7ef;
+            border-radius: 10px;
+        }
+
+        .stat {
+            padding: 21px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 30px;
+            margin: 12px 0 8px;
+            color: #244b83;
+        }
+
+        .panel {
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .panel-head {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            border-bottom: 1px solid #edf0f5;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 16px 20px;
+            background: #fafbfd;
+            align-items: end;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            color: #59687d;
+        }
+
+        .field input,
+        .field select {
+            border: 1px solid #d9e1ec;
+            border-radius: 6px;
+            padding: 9px 11px;
+            background: white;
+            color: #243247;
+            min-height: 38px;
+        }
+
+        .field.search {
+            flex: 1;
+            min-width: 220px;
+        }
+
+        .table-scroll {
+            overflow: auto;
+            max-height: 540px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #f1f4f9;
+            text-align: left;
+            padding: 12px 16px;
+            color: #526279;
+            font-weight: 600;
+            z-index: 1;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #edf0f5;
+            vertical-align: top;
+        }
+
+        tbody tr:hover {
+            background: #f8faff;
+        }
+
+        .badge {
+            display: inline-block;
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 11px;
+            background: #eef1f5;
+            color: #738095;
+        }
+
+        .badge.green {
+            background: #e6f6ef;
+            color: #16845b;
+        }
+
+        .badge.red {
+            background: #fff0ef;
+            color: #c34b4b;
+        }
+
+        .badge.blue {
+            background: #eaf1ff;
+            color: #3562a7;
+        }
+
+        .name-button {
+            border: 0;
+            background: none;
+            padding: 0;
+            color: #2459a9;
+            font-weight: bold;
+        }
+
+        .pager {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 20px;
+            color: #708096;
+            font-size: 12px;
+        }
+
+        .pager-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        mark {
+            background: #fff0a6;
+            color: inherit;
+            padding: 0;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #7e8a9e;
+        }
+
+        footer {
+            text-align: center;
+            color: #9aa4b3;
+            font-size: 11px;
+            padding: 8px 0 22px;
+        }
+
+        dialog {
+            border: 0;
+            border-radius: 12px;
+            padding: 26px;
+            max-width: 520px;
+            width: calc(100% - 32px);
+            box-shadow: 0 20px 80px #15254430;
+        }
+
+        dialog::backdrop {
+            background: #17243c66;
+        }
+
+        .detail {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 14px;
+            margin: 24px 0;
+            line-height: 1.5;
+        }
+
+        .detail dt {
+            color: #7a8799;
+        }
+
+        .detail dd {
+            margin: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .error {
+            background: #fff1ee;
+            color: #ae4735;
+        }
+
+        .heading-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        @media (max-width: 850px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .dashboard {
+                padding: 20px 14px;
+            }
+
+            .navbar {
+                padding: 14px;
+            }
+
+            .heading {
+                align-items: start;
+                flex-direction: column;
+            }
+
+            .main-container {
+                margin-left: 0 !important;
+            }
+        }
+
+        @media (max-width: 450px) {
+            .stat {
+                padding: 16px;
+            }
+
+            .stat strong {
+                font-size: 26px;
+            }
+
+            .filters .field {
+                width: 100%;
+            }
+
+            .field.search {
+                min-width: 0;
+            }
+
+            .pager {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- 공통 사이드바 -->
+    <div id="sidebarContainer"></div>
+
+    <div class="main-container">
+        <header class="navbar">
+            <button
+                class="btn-menu-toggle"
+                id="btnToggleSidebar"
+                aria-label="메뉴 열기"
+            >☰</button>
+
+            <span class="user-info" id="userWelcome">
+                관리자님 환영합니다
+            </span>
+
+            <button class="btn-logout" id="btnLogout">
+                로그아웃
+            </button>
+        </header>
+
+        <main class="dashboard">
+            <div class="heading">
+                <div>
+                    <h1>사용자 · 로그인 대시보드</h1>
+                    <span class="muted">
+                        사내 사용자와 접속 이력을 한눈에 확인하세요.
+                    </span>
+                </div>
+
+                <div class="heading-actions">
+                    <span class="muted" id="updated"></span>
+
+                    <button class="button primary" id="refresh">
+                        새로고침
+                    </button>
+                </div>
+            </div>
+
+            <div class="notice" id="notice" role="status">
+                예시 데이터 화면입니다.
+                사용자 수와 접속 현황은 실제 정보가 아닙니다.
+                실제 데이터는 관리자 API 연결 후 표시됩니다.
+            </div>
+
+            <!-- 요약 현황 -->
+            <section class="stats" aria-label="전체 현황">
+                <div class="stat">
+                    전체 사용자
+                    <strong id="total">0</strong>
+                    <span class="muted">등록된 사용자</span>
+                </div>
+
+                <div class="stat">
+                    현재 접속 중
+                    <strong id="online">0</strong>
+                    <span class="muted">최근 5분 내 활동 기준</span>
+                </div>
+
+                <div class="stat">
+                    오늘 로그인 사용자
+                    <strong id="today">0</strong>
+                    <span class="muted">성공한 사용자 · 중복 제외</span>
+                </div>
+
+                <div class="stat">
+                    오늘 로그인 실패
+                    <strong id="failed">0</strong>
+                    <span class="muted">오늘 발생한 실패 횟수</span>
+                </div>
+            </section>
+
+            <!-- 사용자 목록 -->
+            <section class="panel">
+                <div class="panel-head">
+                    <h2>
+                        사용자 목록
+                        <span class="muted" id="userCount"></span>
+                    </h2>
+
+                    <span class="muted">
+                        이름을 눌러 상세보기
+                    </span>
+                </div>
+
+                <div class="filters">
+                    <label class="field search">
+                        사용자 검색
+                        <input
+                            id="search"
+                            type="search"
+                            placeholder="이름, 아이디, 연락처 검색"
+                        >
+                    </label>
+
+                    <label class="field">
+                        부서
+                        <select id="department">
+                            <option value="">전체 부서</option>
+                        </select>
+                    </label>
+
+                    <label class="field">
+                        접속 상태
+                        <select id="status">
+                            <option value="">전체 상태</option>
+                            <option value="online">접속 중</option>
+                            <option value="offline">미접속</option>
+                        </select>
+                    </label>
+
+                    <label class="field">
+                        표시 개수
+                        <select id="pageSize">
+                            <option>10</option>
+                            <option>20</option>
+                            <option>50</option>
+                        </select>
+                    </label>
+
+                    <button class="button" id="reset">
+                        초기화
+                    </button>
+                </div>
+
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>아이디</th>
+                                <th>이름</th>
+                                <th>부서</th>
+                                <th>직급</th>
+                                <th>연락처</th>
+                                <th>계정 권한</th>
+                                <th>접속 상태</th>
+                                <th>최근 로그인</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="users"></tbody>
+                    </table>
+                </div>
+
+                <div class="pager">
+                    <span id="range"></span>
+
+                    <div class="pager-buttons">
+                        <button class="button" id="prev">이전</button>
+                        <span id="page"></span>
+                        <button class="button" id="next">다음</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 로그인 이력 -->
+            <section class="panel">
+                <div class="panel-head">
+                    <h2>
+                        로그인 이력
+                        <span class="muted" id="logCount"></span>
+                    </h2>
+
+                    <span class="muted">최근 기록 순</span>
+                </div>
+
+                <div class="filters">
+                    <label class="field search">
+                        이력 검색
+                        <input
+                            type="search"
+                            id="logSearch"
+                            placeholder="이름, 아이디, IP 검색"
+                        >
+                    </label>
+
+                    <label class="field">
+                        조회 날짜
+                        <input type="date" id="logDate">
+                    </label>
+
+                    <label class="field">
+                        결과
+                        <select id="logResult">
+                            <option value="">전체 결과</option>
+                            <option value="success">성공</option>
+                            <option value="failed">실패</option>
+                        </select>
+                    </label>
+
+                    <button class="button" id="logReset">
+                        초기화
+                    </button>
+                </div>
+
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>접속 일시</th>
+                                <th>아이디</th>
+                                <th>이름</th>
+                                <th>결과</th>
+                                <th>IP 주소</th>
+                                <th>접속 환경</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="logs"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <footer>klassauto all rights reserved</footer>
+        </main>
+    </div>
+
+    <!-- 사용자 상세보기 -->
+    <dialog id="detailDialog">
+        <h2>사용자 상세 정보</h2>
+
+        <dl class="detail" id="detail"></dl>
+
+        <form method="dialog">
+            <button class="button primary">닫기</button>
+        </form>
+    </dialog>
+
+    <script src="sidebar.js"></script>
+
+    <script>
+        /*
+         * 실제 서버 연동 설정
+         *
+         * DEMO_MODE를 false로 변경하고 아래 API를 구현하세요.
+         *
+         * GET api/admin_dashboard.php
+         * 응답: { success: true, users: [...], logs: [...] }
+         *
+         * users:
+         * { id, name, department, position, phone, role,
+         *   last_login, last_seen }
+         *
+         * logs:
+         * { user_id, name, logged_at,
+         *   result: 'success' | 'failed', ip, device }
+         *
+         * 날짜는 ISO 8601 + 시간대 권장.
+         * SQL DATETIME은 한국 시간으로 해석합니다.
+         *
+         * API에서 PHP 세션 및 관리자 권한을 검증하고
+         * 비밀번호를 반환하지 마세요.
+         *
+         * last_seen은 서버에서 마지막 활동 시각을 기록해야 합니다.
+         * sessionStorage 확인만으로는 관리자 접근 권한을
+         * 보호할 수 없습니다.
+         */
+
+        const DEMO_MODE = true;
+        const DASHBOARD_API = 'api/admin_dashboard.php';
+
+        const $ = id => document.getElementById(id);
+
+        let users = [];
+        let logs = [];
+        let currentPage = 1;
+
+        // HTML 특수문자 처리
+        const esc = value => String(value ?? '').replace(
+            /[&<>"']/g,
+            char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char])
+        );
+
+        // 날짜 해석
+        function parseTime(value) {
+            if (!value) return NaN;
+
+            let str = String(value);
+
+            if (
+                /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/.test(str)
+            ) {
+                str = str.replace(' ', 'T') + '+09:00';
+            }
+
+            return Date.parse(str);
+        }
+
+        // 한국 시간 기준 YYYY-MM-DD
+        function dateKey(value) {
+            const timestamp = parseTime(value);
+
+            return Number.isFinite(timestamp)
+                ? new Date(timestamp).toLocaleDateString('sv-SE', {
+                    timeZone: 'Asia/Seoul'
+                })
+                : '';
+        }
+
+        // 날짜 표시
+        function dateText(value) {
+            const timestamp = parseTime(value);
+
+            return Number.isFinite(timestamp)
+                ? new Date(timestamp).toLocaleString('ko-KR', {
+                    timeZone: 'Asia/Seoul',
+                    hour12: false
+                })
+                : '—';
+        }
+
+        // 최근 5분 내 활동한 사용자
+        function isOnline(user) {
+            const delta = Date.now() - parseTime(user.last_seen);
+
+            return delta >= 0 && delta <= 300000;
+        }
+
+        // 검색어 노란색 강조
+        function highlight(value, keyword) {
+            const str = String(value ?? '');
+
+            if (!keyword) return esc(str);
+
+            const lower = str.toLowerCase();
+
+            let position = 0;
+            let output = '';
+            let index;
+
+            while (
+                (index = lower.indexOf(keyword, position)) !== -1
+            ) {
+                output +=
+                    esc(str.slice(position, index)) +
+                    '<mark>' +
+                    esc(str.slice(index, index + keyword.length)) +
+                    '</mark>';
+
+                position = index + keyword.length;
+            }
+
+            return output + esc(str.slice(position));
+        }
+
+        // 화면 확인용 예시 데이터
+        function demoData() {
+            const ago = minutes =>
+                new Date(
+                    Date.now() - minutes * 60000
+                ).toISOString();
+
+            const departments = [
+                '영업1팀',
+                '영업2팀',
+                '마케팅기획실',
+                '경영지원팀'
+            ];
+
+            const names = [
+                '김서준',
+                '이민서',
+                '박지훈',
+                '최서연',
+                '정도윤',
+                '강지우',
+                '조하준',
+                '윤수빈',
+                '장현우',
+                '임예린',
+                '한유진',
+                '오민준'
+            ];
+
+            users = names.map((name, index) => ({
+                id: String(1001 + index),
+                name,
+                department: departments[index % 4],
+                position:
+                    index === 0
+                        ? '실장'
+                        : index % 3 === 0
+                            ? '팀장'
+                            : '매니저',
+                phone: '010-0000-' + String(1000 + index),
+                role: index === 0 ? '관리자' : '일반 사용자',
+                last_login: ago(index * 85 + 2),
+                last_seen: ago(
+                    index < 3 ? index + 1 : 90 + index * 75
+                )
+            }));
+
+            logs = Array.from({ length: 24 }, (_, index) => ({
+                user_id: users[index % 12].id,
+                name: users[index % 12].name,
+                logged_at: ago(index * 52 + 3),
+                result: index % 7 === 4 ? 'failed' : 'success',
+                ip: '192.0.2.' + (10 + index % 12),
+                device:
+                    index % 3 === 0
+                        ? '모바일 · Safari'
+                        : 'PC · Chrome'
+            }));
+        }
+
+        // 상단 요약 현황
+        function stats() {
+            const today = dateKey(new Date().toISOString());
+
+            $('total').textContent = users.length;
+
+            $('online').textContent =
+                users.filter(isOnline).length;
+
+            $('today').textContent = new Set(
+                logs
+                    .filter(log =>
+                        log.result === 'success' &&
+                        dateKey(log.logged_at) === today
+                    )
+                    .map(log => String(log.user_id))
+            ).size;
+
+            $('failed').textContent = logs.filter(log =>
+                log.result === 'failed' &&
+                dateKey(log.logged_at) === today
+            ).length;
+        }
+
+        // 사용자 목록 표시
+        function renderUsers() {
+            const keyword =
+                $('search').value.trim().toLowerCase();
+
+            const filtered = users.filter(user => {
+                const matchesKeyword =
+                    !keyword ||
+                    [user.name, user.id, user.phone].some(value =>
+                        String(value ?? '')
+                            .toLowerCase()
+                            .includes(keyword)
+                    );
+
+                const matchesDepartment =
+                    !$('department').value ||
+                    user.department === $('department').value;
+
+                const matchesStatus =
+                    !$('status').value ||
+                    isOnline(user) === (
+                        $('status').value === 'online'
+                    );
+
+                return (
+                    matchesKeyword &&
+                    matchesDepartment &&
+                    matchesStatus
+                );
+            });
+
+            const size = Number($('pageSize').value);
+
+            const pages = Math.max(
+                1,
+                Math.ceil(filtered.length / size)
+            );
+
+            currentPage = Math.min(currentPage, pages);
+
+            const start = (currentPage - 1) * size;
+
+            $('userCount').textContent =
+                `(${filtered.length}명)`;
+
+            $('users').innerHTML =
+                filtered
+                    .slice(start, start + size)
+                    .map(user => `
+                        <tr>
+                            <td>${highlight(user.id, keyword)}</td>
+                            <td>
+                                <button
+                                    class="name-button"
+                                    data-user="${esc(user.id)}"
+                                >
+                                    ${highlight(user.name, keyword)}
+                                </button>
+                            </td>
+                            <td>${esc(user.department) || '—'}</td>
+                            <td>${esc(user.position) || '—'}</td>
+                            <td>
+                                ${highlight(user.phone, keyword) || '—'}
+                            </td>
+                            <td>
+                                <span class="badge ${
+                                    user.role === '관리자' ? 'blue' : ''
+                                }">
+                                    ${esc(user.role) || '일반 사용자'}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge ${
+                                    isOnline(user) ? 'green' : ''
+                                }">
+                                    ${
+                                        isOnline(user)
+                                            ? '● 접속 중'
+                                            : '미접속'
+                                    }
+                                </span>
+                            </td>
+                            <td>
+                                ${esc(dateText(user.last_login))}
+                            </td>
+                        </tr>
+                    `)
+                    .join('') ||
+                `
+                    <tr>
+                        <td colspan="8" class="empty">
+                            조건에 맞는 사용자가 없습니다.
+                        </td>
+                    </tr>
+                `;
+
+            $('range').textContent = filtered.length
+                ? `${start + 1}–${
+                    Math.min(start + size, filtered.length)
+                } / ${filtered.length}명`
+                : '0명';
+
+            $('page').textContent =
+                `${currentPage} / ${pages}`;
+
+            $('prev').disabled = currentPage === 1;
+            $('next').disabled = currentPage === pages;
+        }
+
+        // 로그인 이력 표시
+        function renderLogs() {
+            const keyword =
+                $('logSearch').value.trim().toLowerCase();
+
+            const filtered = logs
+                .filter(log => {
+                    const matchesKeyword =
+                        !keyword ||
+                        [log.name, log.user_id, log.ip].some(value =>
+                            String(value ?? '')
+                                .toLowerCase()
+                                .includes(keyword)
+                        );
+
+                    const matchesDate =
+                        !$('logDate').value ||
+                        dateKey(log.logged_at) === $('logDate').value;
+
+                    const matchesResult =
+                        !$('logResult').value ||
+                        log.result === $('logResult').value;
+
+                    return (
+                        matchesKeyword &&
+                        matchesDate &&
+                        matchesResult
+                    );
+                })
+                .sort((a, b) =>
+                    (parseTime(b.logged_at) || 0) -
+                    (parseTime(a.logged_at) || 0)
+                );
+
+            $('logCount').textContent =
+                `(${filtered.length}건)`;
+
+            $('logs').innerHTML =
+                filtered.map(log => `
+                    <tr>
+                        <td>${esc(dateText(log.logged_at))}</td>
+                        <td>${highlight(log.user_id, keyword)}</td>
+                        <td>${highlight(log.name, keyword)}</td>
+                        <td>
+                            <span class="badge ${
+                                log.result === 'success'
+                                    ? 'green'
+                                    : 'red'
+                            }">
+                                ${
+                                    log.result === 'success'
+                                        ? '성공'
+                                        : '실패'
+                                }
+                            </span>
+                        </td>
+                        <td>${highlight(log.ip, keyword) || '—'}</td>
+                        <td>${esc(log.device) || '—'}</td>
+                    </tr>
+                `).join('') ||
+                `
+                    <tr>
+                        <td colspan="6" class="empty">
+                            조건에 맞는 로그인 기록이 없습니다.
+                        </td>
+                    </tr>
+                `;
+        }
+
+        // 데이터 불러오기
+        async function load() {
+            const button = $('refresh');
+
+            button.disabled = true;
+            button.textContent = '불러오는 중…';
+
+            try {
+                if (DEMO_MODE) {
+                    demoData();
+                } else {
+                    const response = await fetch(DASHBOARD_API, {
+                        credentials: 'same-origin',
+                        cache: 'no-store'
+                    });
+
+                    const body = await response.text();
+
+                    let data;
+
+                    try {
+                        data = JSON.parse(body);
+                    } catch {
+                        throw new Error(
+                            'API가 올바른 JSON을 반환하지 않았습니다.'
+                        );
+                    }
+
+                    if (!response.ok || !data.success) {
+                        throw new Error(
+                            data.message ||
+                            '사용자 현황을 불러오지 못했습니다.'
+                        );
+                    }
+
+                    if (
+                        !Array.isArray(data.users) ||
+                        !Array.isArray(data.logs)
+                    ) {
+                        throw new Error(
+                            'API users/logs 형식을 확인해주세요.'
+                        );
+                    }
+
+                    users = data.users;
+                    logs = data.logs;
+                }
+
+                const selectedDepartment = $('department').value;
+
+                const departments = [
+                    ...new Set(
+                        users
+                            .map(user => user.department)
+                            .filter(Boolean)
+                    )
+                ].sort();
+
+                $('department').innerHTML =
+                    '<option value="">전체 부서</option>' +
+                    departments.map(department => `
+                        <option value="${esc(department)}">
+                            ${esc(department)}
+                        </option>
+                    `).join('');
+
+                $('department').value = selectedDepartment;
+
+                stats();
+                renderUsers();
+                renderLogs();
+
+                $('updated').textContent =
+                    '갱신 ' +
+                    new Date().toLocaleTimeString('ko-KR', {
+                        timeZone: 'Asia/Seoul',
+                        hour12: false
+                    });
+
+                $('notice').classList.remove('error');
+
+                $('notice').textContent = DEMO_MODE
+                    ? '예시 데이터 화면입니다. 사용자 수와 접속 현황은 실제 정보가 아닙니다. 실제 데이터는 관리자 API 연결 후 표시됩니다.'
+                    : '접속 중은 최근 5분 내 활동 기준입니다. 오늘 로그인 수는 API가 반환한 로그인 기록을 기준으로 계산됩니다.';
+
+            } catch (error) {
+                $('notice').classList.add('error');
+
+                $('notice').textContent =
+                    error.message +
+                    ' 기존 표시 정보가 있으면 마지막 갱신 시점의 정보입니다.';
+
+            } finally {
+                button.disabled = false;
+                button.textContent = '새로고침';
+            }
+        }
+
+        // 사용자 검색 및 필터
+        ['search', 'department', 'status', 'pageSize']
+            .forEach(id => {
+                $(id).addEventListener(
+                    id === 'search' ? 'input' : 'change',
+                    () => {
+                        currentPage = 1;
+                        renderUsers();
+                    }
+                );
+            });
+
+        // 로그인 이력 검색 및 필터
+        ['logSearch', 'logDate', 'logResult']
+            .forEach(id => {
+                $(id).addEventListener(
+                    id === 'logSearch' ? 'input' : 'change',
+                    renderLogs
+                );
+            });
+
+        // 사용자 필터 초기화
+        $('reset').onclick = () => {
+            ['search', 'department', 'status']
+                .forEach(id => {
+                    $(id).value = '';
+                });
+
+            currentPage = 1;
+            renderUsers();
+        };
+
+        // 로그인 이력 필터 초기화
+        $('logReset').onclick = () => {
+            ['logSearch', 'logDate', 'logResult']
+                .forEach(id => {
+                    $(id).value = '';
+                });
+
+            renderLogs();
+        };
+
+        // 페이지 이동
+        $('prev').onclick = () => {
+            currentPage--;
+            renderUsers();
+        };
+
+        $('next').onclick = () => {
+            currentPage++;
+            renderUsers();
+        };
+
+        $('refresh').onclick = load;
+
+        // 사용자 상세보기
+        $('users').onclick = event => {
+            const button =
+                event.target.closest('[data-user]');
+
+            if (!button) return;
+
+            const user = users.find(user =>
+                String(user.id) === button.dataset.user
+            );
+
+            if (!user) return;
+
+            const rows = [
+                ['아이디', user.id],
+                ['이름', user.name],
+                ['부서', user.department],
+                ['직급', user.position],
+                ['연락처', user.phone],
+                ['권한', user.role],
+                ['최근 로그인', dateText(user.last_login)],
+                ['최근 활동', dateText(user.last_seen)]
+            ];
+
+            $('detail').innerHTML = rows
+                .map(([label, value]) => `
+                    <dt>${esc(label)}</dt>
+                    <dd>${esc(value) || '—'}</dd>
+                `)
+                .join('');
+
+            $('detailDialog').showModal();
+        };
+
+        // 로그인 사용자 이름
+        $('userWelcome').textContent =
+            (sessionStorage.getItem('userName') || '관리자') +
+            '님 환영합니다';
+
+        // 로그아웃
+        $('btnLogout').onclick = async () => {
+            if (!DEMO_MODE) {
+                $('btnLogout').disabled = true;
+
+                try {
+                    const response = await fetch('api/logout.php', {
+                        method: 'POST',
+                        credentials: 'same-origin'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('로그아웃 API 오류');
+                    }
+
+                } catch (error) {
+                    $('notice').textContent = error.message;
+                    $('notice').classList.add('error');
+                    $('btnLogout').disabled = false;
+                    return;
+                }
+            }
+
+            sessionStorage.removeItem('isLoggedIn');
+            sessionStorage.removeItem('userName');
+
+            location.replace('index.html');
+        };
+
+        // 공통 사이드바
+        if (typeof initCommonSidebar === 'function') {
+            try {
+                initCommonSidebar('navSetting');
+            } catch (error) {
+                console.warn('사이드바 초기화 실패', error);
+            }
+        } else {
+            $('btnToggleSidebar').hidden = true;
+        }
+
+        // 초기 실행
+        if (
+            !DEMO_MODE &&
+            sessionStorage.getItem('isLoggedIn') !== 'true'
+        ) {
+            location.replace('index.html');
+        } else {
+            load();
+
+            // 이미 불러온 데이터의 접속 상태를 1분마다 다시 계산
+            setInterval(() => {
+                stats();
+                renderUsers();
+            }, 60000);
+        }
+    </script>
+</body>
+</html>
