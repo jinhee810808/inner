@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" type="image/x-icon" href="img/logo_k_out.ico">
+    <link rel="stylesheet" href="css/pagination.css">
+    <link rel="stylesheet" href="css/filter.css">
+    <link rel="stylesheet" href="css/table.css">
+    <title>클라스오토 사내전산 - 개인 DB 목록</title>
+
+    <script>
+        if (sessionStorage.getItem('isLoggedIn') !== 'true') {
+            alert('로그인이 필요한 페이지입니다.');
+            location.replace('index.html');
+        }
+    </script>
+<style>
+.page-title-row > div { flex-wrap:wrap; }
+.excel-table td { vertical-align:top; }
+.memo-cell { min-width:180px; max-width:340px; white-space:pre-wrap; overflow-wrap:anywhere; }
+#editMemo { width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; font:inherit; resize:vertical; }
+.link-name { cursor:pointer; color:#2459a9; background:none; border:0; font:inherit; }
+#pdStatus { margin:8px 0 14px; color:#526279; }
+mark { background:#fff0a6; color:inherit; }
+@media(max-width:700px){.page-title-row { flex-wrap:wrap; gap:12px; }.filter-container { flex-wrap:wrap; }.search-box { width:100%; }.search-box input { width:100%; }}
+</style></head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- [공통 사이드바가 삽입되는 컨테이너] -->
+    <div id="sidebarContainer"></div>
+
+    <!-- 우측 메인 영역 -->
+    <div class="main-container">
+        <header class="navbar">
+            <button class="btn-menu-toggle" id="btnToggleSidebar">☰</button>
+            <span class="user-info" id="userWelcome">사용자님 환영합니다</span>
+            <button class="btn-logout" id="btnLogout">로그아웃</button>
+        </header>
+
+        <!-- 디비 목록 화면 -->
+        <main class="content">
+            <div class="page-header">
+                <div class="page-title-row">
+                    <h2>개인 DB 목록</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-reset-all" onclick="openCreateModal()">+ DB 생성</button>
+                        <button type="button" id="btnDeleteSelected" class="btn-reset-all" style="color:#b42318;" disabled>선택 삭제 (0)</button>
+                        <button type="button" id="btnSendSms" class="btn-reset-all" disabled>선택한 고객에게 문자 보내기 (0)</button>
+                        <button type="button" class="btn-reset-all" onclick="resetAllFilters()">전체 조건 초기화</button>
+                        <select id="pageSizeSelect" class="page-size-select">
+                            <option value="10">10개씩 보기</option>
+                            <option value="20" selected>20개씩 보기</option>
+                            <option value="50">50개씩 보기</option>
+                            <option value="100">100개씩 보기</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-container">
+                    <select id="dateTypeSelect" class="date-type-select">
+                        <option value="receipt">📅 접수일 기준</option>
+                        <option value="updated">수정일 기준</option>
+                    </select>
+
+                    <div class="date-filter-group">
+                        <input type="date" id="filterStartDate" class="date-input">
+                        <span style="color:#888;">~</span>
+                        <input type="date" id="filterEndDate" class="date-input">
+                    </div>
+
+                    <div class="quick-date-btns">
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('today')">오늘</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('lastMonth')">지난달</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('thisMonth')">이번달</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('nextMonth')">다음달</button>
+                        <!-- <button type="button" class="btn-quick-date" onclick="setQuickDate('past3Months')">지난3개월</button> -->
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('next3Months')">향후3개월</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('clear')">기간 비우기</button>
+                    </div>
+
+                    <div class="search-box" style="margin-left: auto;">
+                        <input type="text" id="searchInput" placeholder="고객명, 전화번호, 제조사, 차량명, 메모 검색">
+                    </div>
+                </div>                
+            </div>            
+            
+
+            <div id="pdStatus" role="status">로그인한 본인의 개인 DB만 표시합니다.</div>
+            <div class="table-wrapper">
+                <div class="table-scroll">
+                    <table class="excel-table">
+                        <thead>
+                            <tr>
+                                <th class="col-checkbox">
+                                    <input type="checkbox" id="checkAll" title="전체 선택">
+                                </th>
+                                <th>순번</th>
+                                <th class="yellow">휴대폰번호</th>
+                                <th class="yellow">고객명</th>
+                                <th>접수일</th><th>제조사</th><th>차량명</th>
+                                <th>담당자</th><th>담당자 아이디</th><th>메모</th><th>수정일</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dbTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container">
+                    <div id="pageInfoText">총 0건 중 0 - 0건 표시</div>
+                    <div class="pagination-buttons" id="paginationControls"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 상세 편집 모달 -->
+    <div class="modal-overlay" id="editModalOverlay">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3 id="editModalTitle">고객 DB 상세 정보</h3>
+                <button type="button" class="modal-close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="editForm" onsubmit="handleFormSubmit(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+                    <div class="modal-grid">
+                        <div class="form-group"><label for="editName">고객명 *</label><input id="editName" maxlength="50" required></div>
+                        <div class="form-group"><label for="editPhone">전화번호</label><input id="editPhone" type="tel" maxlength="20"></div>
+                        
+                        <div class="form-group"><label for="editMaker">제조사</label><input id="editMaker" maxlength="50"></div>
+                        <div class="form-group"><label for="editCarName">차량명</label><input id="editCarName" maxlength="100"></div>
+                        <div class="form-group"><label for="editReceiptDate">접수일</label><input type="date" id="editReceiptDate"></div>
+                        <div class="form-group"><label for="editManager">담당자</label><input id="editManager" readonly></div>
+                        <div class="form-group">
+                            <!-- <label for="editManagerId">담당자 아이디</label> -->
+                            <input id="editManagerId" type="hidden" readonly></div>
+                        <div class="form-group" style="grid-column:1/-1"><label for="editMemo">메모</label><textarea id="editMemo" rows="5" maxlength="10000"></textarea></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal-cancel" onclick="closeModal()">취소</button>
+                    <button type="submit" id="editSubmitButton" class="btn-modal-save">저장 완료</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 사이드바 로더 연결 -->
+    <script src="sidebar.js"></script>
+
+    <script src="js/user_activity.js"></script>
+
+    <script>
+        document.getElementById('editPhone').addEventListener('input', function () {
+            const number = this.value.replace(/\D/g, '').slice(0, 11);
+
+            if (number.startsWith('02')) {
+                // 서울 지역번호: 02-123-4567 / 02-1234-5678
+                this.value = number.length <= 2
+                    ? number
+                    : number.length <= 5
+                        ? `${number.slice(0, 2)}-${number.slice(2)}`
+                        : number.length <= 9
+                            ? `${number.slice(0, 2)}-${number.slice(2, 5)}-${number.slice(5)}`
+                            : `${number.slice(0, 2)}-${number.slice(2, 6)}-${number.slice(6, 10)}`;
+            } else {
+                // 휴대폰·지역번호: 010-1234-5678 / 031-123-4567
+                this.value = number.length <= 3
+                    ? number
+                    : number.length <= 6
+                        ? `${number.slice(0, 3)}-${number.slice(3)}`
+                        : number.length <= 10
+                            ? `${number.slice(0, 3)}-${number.slice(3, 6)}-${number.slice(6)}`
+                            : `${number.slice(0, 3)}-${number.slice(3, 7)}-${number.slice(7)}`;
+            }
+        });
+    const $ = id => document.getElementById(id);
+    let dbData=[], filteredData=[], selectedRowIds=new Set(), currentPage=1, pageSize=20, me=null, csrfToken='', saving=false;
+    const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function highlight(v){const q=$('searchInput').value.trim().toLowerCase(),s=String(v??'');if(!q)return esc(s)||'—';let out='',p=0,i;while((i=s.toLowerCase().indexOf(q,p))!==-1){out+=esc(s.slice(p,i))+'<mark>'+esc(s.slice(i,i+q.length))+'</mark>';p=i+q.length}return out+esc(s.slice(p))||'—'}
+    function dateText(v){if(!v)return '—';const d=new Date(String(v).replace(' ','T')+(String(v).includes('T')?'':'+09:00'));return Number.isNaN(d.getTime())?esc(v):esc(d.toLocaleString('ko-KR',{timeZone:'Asia/Seoul',hour12:false}));}
+    async function api(method='GET',data){const options={method,credentials:'same-origin',cache:'no-store'};if(data){options.headers={'Content-Type':'application/json'};options.body=JSON.stringify({...data,csrfToken});}const r=await fetch('api/get_pdblist.php',options);let result;try{result=JSON.parse(await r.text())}catch{throw Error('api/get_pdblist.php가 올바른 JSON을 반환하지 않았습니다.')}if(!r.ok||!result.success)throw Error(result.message||'서버 처리 오류');return result;}
+    async function loadDbData(){try{const r=await api();dbData=r.data.map(x=>({...x,id:Number(x.id)}));me=r.user;csrfToken=r.csrfToken;$('userWelcome').textContent=me.name+'님 환영합니다';selectedRowIds.clear();applyFilters();$('pdStatus').textContent=`${me.name}님의 개인 DB · 전체 ${dbData.length}건`;}catch(e){$('pdStatus').textContent=e.message;if(!me){$('dbTableBody').innerHTML='<tr><td colspan="11">'+esc(e.message)+'</td></tr>';}}}
+    function applyFilters(){const q=$('searchInput').value.trim().toLowerCase(),start=$('filterStartDate').value,end=$('filterEndDate').value;filteredData=dbData.filter(d=>{const date=String(d[$('dateTypeSelect').value==='updated'?'updated':'receipt_date']||'').slice(0,10);return (!q||[d.name,d.phone,d.maker,d.car_name,d.manager,d.manager_id,d.memo].some(v=>String(v||'').toLowerCase().includes(q)))&&((!start&&!end)||(date&&(!start||date>=start)&&(!end||date<=end)));});currentPage=1;renderTable();}
+    function renderTable(){const n=filteredData.length,pages=Math.max(1,Math.ceil(n/pageSize));currentPage=Math.max(1,Math.min(currentPage,pages));const start=(currentPage-1)*pageSize,rows=filteredData.slice(start,start+pageSize);$('dbTableBody').innerHTML=rows.map((d,i)=>`<tr data-id="${d.id}" class="${selectedRowIds.has(d.id)?'row-selected':''}"><td><input type="checkbox" class="row-checkbox" data-id="${d.id}" ${selectedRowIds.has(d.id)?'checked':''}></td><td>${n-start-i}</td><td>${highlight(d.phone)}</td><td><button type="button" class="link-name" data-edit="${d.id}">${highlight(d.name)}</button></td><td>${esc(d.receipt_date)||'—'}</td><td>${highlight(d.maker)}</td><td>${highlight(d.car_name)}</td><td>${highlight(d.manager)}</td><td>${highlight(d.manager_id)}</td><td class="memo-cell">${highlight(d.memo)}</td><td>${dateText(d.updated)}</td></tr>`).join('')||'<tr><td colspan="11" style="padding:24px">조회된 데이터가 없습니다.</td></tr>';$('checkAll').checked=rows.length>0&&rows.every(d=>selectedRowIds.has(d.id));$('checkAll').indeterminate=rows.some(d=>selectedRowIds.has(d.id))&&!$('checkAll').checked;$('pageInfoText').textContent=n?`총 ${n}건 중 ${start+1} - ${Math.min(start+pageSize,n)}건 표시`:'데이터 없음';let html=`<button class="btn-page" data-page="${currentPage-1}" ${currentPage===1?'disabled':''}>이전</button>`;for(let p=Math.max(1,currentPage-2);p<=Math.min(pages,currentPage+2);p++)html+=`<button class="btn-page ${p===currentPage?'active':''}" data-page="${p}">${p}</button>`;html+=`<button class="btn-page" data-page="${currentPage+1}" ${currentPage===pages?'disabled':''}>다음</button>`;$('paginationControls').innerHTML=html;updateButtons();}
+    function updateButtons(){['btnDeleteSelected','btnSendSms'].forEach(id=>{$(id).disabled=!selectedRowIds.size;$(id).textContent=(id==='btnDeleteSelected'?'선택 삭제':'선택한 고객에게 문자 보내기')+` (${selectedRowIds.size})`;});}
+    $('paginationControls').onclick=e=>{const b=e.target.closest('[data-page]');if(b&&!b.disabled){currentPage=Number(b.dataset.page);renderTable();}};
+    $('dbTableBody').onchange=e=>{if(!e.target.matches('.row-checkbox'))return;const id=Number(e.target.dataset.id);e.target.checked?selectedRowIds.add(id):selectedRowIds.delete(id);renderTable();};
+    $('dbTableBody').onclick=e=>{const b=e.target.closest('[data-edit]');if(b)openModal(Number(b.dataset.edit));};
+    $('checkAll').onchange=e=>{filteredData.slice((currentPage-1)*pageSize,currentPage*pageSize).forEach(d=>e.target.checked?selectedRowIds.add(d.id):selectedRowIds.delete(d.id));renderTable();};
+    const fields={name:'editName',phone:'editPhone',receipt_date:'editReceiptDate',maker:'editMaker',car_name:'editCarName',memo:'editMemo'};
+    window.openCreateModal=()=>{if(!me){alert('사용자 정보를 불러온 후 다시 시도해주세요.');return;}$('editForm').reset();$('editId').value='';$('editReceiptDate').value=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});$('editManager').value=me.name;$('editManagerId').value=me.user_id;$('editModalTitle').textContent='새 개인 DB 생성';$('editSubmitButton').textContent='DB 생성';$('editModalOverlay').classList.add('active');$('editName').focus();};
+    window.openModal=id=>{const d=dbData.find(d=>d.id===id);if(!d)return;$('editId').value=id;Object.entries(fields).forEach(([k,v])=>$(v).value=d[k]||'');$('editManager').value=d.manager||me.name;$('editManagerId').value=d.manager_id;$('editModalTitle').textContent='개인 DB 상세 수정';$('editSubmitButton').textContent='저장';$('editModalOverlay').classList.add('active');};
+    window.closeModal=()=>{if(!saving)$('editModalOverlay').classList.remove('active');};
+    window.handleFormSubmit=async e=>{e.preventDefault();if(saving)return;saving=true;$('editSubmitButton').disabled=true;const data=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,$(v).value.trim()]));if($('editId').value)data.id=Number($('editId').value);try{await api('POST',{action:'save',...data});$('editModalOverlay').classList.remove('active');await loadDbData();alert('저장되었습니다.');}catch(e){alert(e.message);}finally{saving=false;$('editSubmitButton').disabled=false;}};
+    $('btnDeleteSelected').onclick=async()=>{const ids=[...selectedRowIds];if(!ids.length||!confirm(`${ids.length}건을 삭제할까요? 삭제한 데이터는 되돌릴 수 없습니다.`))return;$('btnDeleteSelected').disabled=true;try{const r=await api('POST',{action:'delete',ids});await loadDbData();alert(`${r.deletedCount}건 삭제했습니다.`);}catch(e){alert(e.message);}finally{updateButtons();}};
+    $('btnSendSms').onclick=()=>{const nums=[...new Set(dbData.filter(d=>selectedRowIds.has(d.id)).map(d=>String(d.phone||'').replace(/[^\d+]/g,'')).filter(n=>/^(?:01\d{8,9}|\+82(?:10|11|16|17|18|19)\d{7,8})$/.test(n)))];if(!nums.length)return alert('유효한 휴대폰번호가 없습니다.');if(confirm(`${nums.length}개 번호로 문자 작성 화면을 여시겠습니까? 문자 발송은 직접 확인해주세요.`))location.href='sms:'+nums.join(',');};
+    window.resetAllFilters=()=>{['filterStartDate','filterEndDate','searchInput'].forEach(id=>$(id).value='');$('dateTypeSelect').value='receipt';applyFilters();};
+    window.setQuickDate=type=>{const today=new Date(new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'})+'T12:00:00');const y=today.getFullYear(),m=today.getMonth(),fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;let start=today,end=today;if(type==='clear'){$('filterStartDate').value='';$('filterEndDate').value='';}else{if(type==='lastMonth'){start=new Date(y,m-1,1);end=new Date(y,m,0);}if(type==='thisMonth'){start=new Date(y,m,1);end=new Date(y,m+1,0);}if(type==='nextMonth'){start=new Date(y,m+1,1);end=new Date(y,m+2,0);}if(type==='next3Months')end=new Date(y,m+3,0);$('filterStartDate').value=fmt(start);$('filterEndDate').value=fmt(end);}applyFilters();};
+    ['searchInput','filterStartDate','filterEndDate','dateTypeSelect'].forEach(id=>$(id).addEventListener(id==='searchInput'?'input':'change',applyFilters));$('pageSizeSelect').onchange=e=>{pageSize=Number(e.target.value);currentPage=1;renderTable();};
+    $('btnLogout').onclick=async()=>{try{const r=await fetch('api/logout.php',{method:'POST',credentials:'same-origin'});const body=await r.json();if(!r.ok||!body.success)throw Error(body.message||'로그아웃 실패');sessionStorage.clear();location.replace('index.html');}catch(e){alert(e.message);}};
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+    if(typeof initCommonSidebar==='function'){try{initCommonSidebar('navPdblist');}catch(e){console.warn(e);}}
+    loadDbData();
+    </script>
+
+</body>
+</html>

@@ -368,6 +368,12 @@
                 flex-wrap: wrap;
             }
         }
+
+        .password-form { margin-top: 22px; }
+        .password-form label { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+        .password-form input { width: 100%; padding: 11px; border: 1px solid #d9e1ec; border-radius: 6px; font: inherit; }
+        .password-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+        #passwordMessage { color: #b5443b; line-height: 1.6; }
     </style>
 </head>
 
@@ -389,6 +395,9 @@
                 관리자님 환영합니다
             </span>
 
+            <button class="btn-logout" id="btnChangePassword">
+                비밀번호 변경
+            </button>
             <button class="btn-logout" id="btnLogout">
                 로그아웃
             </button>
@@ -412,11 +421,7 @@
                 </div>
             </div>
 
-            <div class="notice" id="notice" role="status">
-                예시 데이터 화면입니다.
-                사용자 수와 접속 현황은 실제 정보가 아닙니다.
-                실제 데이터는 관리자 API 연결 후 표시됩니다.
-            </div>
+            <div class="notice" id="notice" role="status">사용자 목록을 불러오는 중입니다.</div>
 
             <!-- 요약 현황 -->
             <section class="stats" aria-label="전체 현황">
@@ -435,13 +440,13 @@
                 <div class="stat">
                     오늘 로그인 사용자
                     <strong id="today">0</strong>
-                    <span class="muted">성공한 사용자 · 중복 제외</span>
+                    <span class="muted">오늘 기준</span>
                 </div>
 
                 <div class="stat">
                     오늘 로그인 실패
                     <strong id="failed">0</strong>
-                    <span class="muted">오늘 발생한 실패 횟수</span>
+                    <span class="muted">오늘 기준</span>
                 </div>
             </section>
 
@@ -601,44 +606,83 @@
         </form>
     </dialog>
 
+    <dialog id="passwordDialog" aria-labelledby="passwordTitle">
+        <h2 id="passwordTitle">비밀번호 변경</h2>
+        <form id="passwordForm" class="password-form">
+            <label>현재 비밀번호<input type="password" name="currentPassword" autocomplete="current-password" required></label>
+            <label>새 비밀번호<input type="password" name="newPassword" autocomplete="new-password" minlength="8" required></label>
+            <label>새 비밀번호 확인<input type="password" name="confirmPassword" autocomplete="new-password" minlength="8" required></label>
+            <p class="muted">새 비밀번호는 8~72바이트로 입력해주세요.</p>
+            <p id="passwordMessage" role="status" aria-live="polite"></p>
+            <div class="password-actions">
+                <button type="button" class="button" id="passwordCancel">취소</button>
+                <button type="submit" class="button primary" id="passwordSubmit">변경하기</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script>
+        (() => {
+            const dialog = document.getElementById('passwordDialog');
+            const form = document.getElementById('passwordForm');
+            const message = document.getElementById('passwordMessage');
+            const submit = document.getElementById('passwordSubmit');
+            let busy = false;
+            document.getElementById('btnChangePassword').onclick = () => {
+                form.reset(); message.textContent = ''; dialog.showModal();
+            };
+            document.getElementById('passwordCancel').onclick = () => dialog.close();
+            dialog.addEventListener('close', () => { form.reset(); message.textContent = ''; });
+            dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+            form.addEventListener('submit', async event => {
+                event.preventDefault();
+                if (busy) return;
+                const currentPassword = form.elements.currentPassword.value;
+                const newPassword = form.elements.newPassword.value;
+                const confirmPassword = form.elements.confirmPassword.value;
+                if (newPassword !== confirmPassword) { message.textContent = '새 비밀번호와 확인 값이 다릅니다.'; return; }
+                const bytes = new TextEncoder().encode(newPassword).length;
+                if (bytes < 8 || bytes > 72) { message.textContent = '새 비밀번호는 8~72바이트로 입력해주세요.'; return; }
+                busy = true; submit.disabled = true;
+                document.getElementById('passwordCancel').disabled = true;
+                message.textContent = '변경 중…';
+                try {
+                    // 기존 login.php의 GET 응답에서 로그인 확인 및 CSRF 토큰을 가져옵니다.
+                    const authResponse = await fetch('api/login.php', { credentials: 'same-origin', cache: 'no-store' });
+                    const auth = await authResponse.json();
+                    if (!authResponse.ok || !auth.success) throw new Error(auth.message || '다시 로그인해주세요.');
+                    const response = await fetch('api/change_password.php', {
+                        method: 'POST', credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ currentPassword, newPassword, confirmPassword, csrfToken: auth.csrfToken })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.message || '비밀번호 변경에 실패했습니다.');
+                    form.reset(); dialog.close(); alert(result.message);
+                } catch (error) {
+                    message.textContent = error.message || '서버 응답을 확인해주세요.';
+                } finally {
+                    busy = false; submit.disabled = false;
+                    document.getElementById('passwordCancel').disabled = false;
+                }
+            });
+        })();
+    </script>
+
+    <script src="js/user_activity.js"></script>
     <script src="sidebar.js"></script>
 
     <script>
-        /*
-         * 실제 서버 연동 설정
-         *
-         * DEMO_MODE를 false로 변경하고 아래 API를 구현하세요.
-         *
-         * GET api/admin_dashboard.php
-         * 응답: { success: true, users: [...], logs: [...] }
-         *
-         * users:
-         * { id, name, department, position, phone, role,
-         *   last_login, last_seen }
-         *
-         * logs:
-         * { user_id, name, logged_at,
-         *   result: 'success' | 'failed', ip, device }
-         *
-         * 날짜는 ISO 8601 + 시간대 권장.
-         * SQL DATETIME은 한국 시간으로 해석합니다.
-         *
-         * API에서 PHP 세션 및 관리자 권한을 검증하고
-         * 비밀번호를 반환하지 마세요.
-         *
-         * last_seen은 서버에서 마지막 활동 시각을 기록해야 합니다.
-         * sessionStorage 확인만으로는 관리자 접근 권한을
-         * 보호할 수 없습니다.
-         */
-
-        const DEMO_MODE = true;
-        const DASHBOARD_API = 'api/admin_dashboard.php';
+        // api/get_inner_users.php에서 inner_user를 조회합니다.
+        const DEMO_MODE = false;
+        const DASHBOARD_API = 'api/get_inner_users.php';
 
         const $ = id => document.getElementById(id);
 
         let users = [];
         let logs = [];
         let currentPage = 1;
+        let serverStats = null;
 
         // HTML 특수문자 처리
         const esc = value => String(value ?? '').replace(
@@ -692,9 +736,7 @@
 
         // 최근 5분 내 활동한 사용자
         function isOnline(user) {
-            const delta = Date.now() - parseTime(user.last_seen);
-
-            return delta >= 0 && delta <= 300000;
+            return Number(user.is_online) === 1;
         }
 
         // 검색어 노란색 강조
@@ -724,88 +766,9 @@
             return output + esc(str.slice(position));
         }
 
-        // 화면 확인용 예시 데이터
-        function demoData() {
-            const ago = minutes =>
-                new Date(
-                    Date.now() - minutes * 60000
-                ).toISOString();
-
-            const departments = [
-                '영업1팀',
-                '영업2팀',
-                '마케팅기획실',
-                '경영지원팀'
-            ];
-
-            const names = [
-                '김서준',
-                '이민서',
-                '박지훈',
-                '최서연',
-                '정도윤',
-                '강지우',
-                '조하준',
-                '윤수빈',
-                '장현우',
-                '임예린',
-                '한유진',
-                '오민준'
-            ];
-
-            users = names.map((name, index) => ({
-                id: String(1001 + index),
-                name,
-                department: departments[index % 4],
-                position:
-                    index === 0
-                        ? '실장'
-                        : index % 3 === 0
-                            ? '팀장'
-                            : '매니저',
-                phone: '010-0000-' + String(1000 + index),
-                role: index === 0 ? '관리자' : '일반 사용자',
-                last_login: ago(index * 85 + 2),
-                last_seen: ago(
-                    index < 3 ? index + 1 : 90 + index * 75
-                )
-            }));
-
-            logs = Array.from({ length: 24 }, (_, index) => ({
-                user_id: users[index % 12].id,
-                name: users[index % 12].name,
-                logged_at: ago(index * 52 + 3),
-                result: index % 7 === 4 ? 'failed' : 'success',
-                ip: '192.0.2.' + (10 + index % 12),
-                device:
-                    index % 3 === 0
-                        ? '모바일 · Safari'
-                        : 'PC · Chrome'
-            }));
-        }
-
-        // 상단 요약 현황
         function stats() {
-            const today = dateKey(new Date().toISOString());
-
-            $('total').textContent = users.length;
-
-            $('online').textContent =
-                users.filter(isOnline).length;
-
-            $('today').textContent = new Set(
-                logs
-                    .filter(log =>
-                        log.result === 'success' &&
-                        dateKey(log.logged_at) === today
-                    )
-                    .map(log => String(log.user_id))
-            ).size;
-
-            $('failed').textContent = logs.filter(log =>
-                log.result === 'failed' &&
-                dateKey(log.logged_at) === today
-            ).length;
+            if (!serverStats) return;
+            ['total','online','today','failed'].forEach(id => { $(id).textContent = serverStats[id]; });
         }
 
         // 사용자 목록 표시
@@ -816,7 +779,7 @@
             const filtered = users.filter(user => {
                 const matchesKeyword =
                     !keyword ||
-                    [user.name, user.id, user.phone].some(value =>
+                    [user.name, user.user_id, user.phone].some(value =>
                         String(value ?? '')
                             .toLowerCase()
                             .includes(keyword)
@@ -858,7 +821,7 @@
                     .slice(start, start + size)
                     .map(user => `
                         <tr>
-                            <td>${highlight(user.id, keyword)}</td>
+                            <td>${highlight(user.user_id, keyword)}</td>
                             <td>
                                 <button
                                     class="name-button"
@@ -874,25 +837,13 @@
                             </td>
                             <td>
                                 <span class="badge ${
-                                    user.role === '관리자' ? 'blue' : ''
+                                    ['마스터', '마스터1'].includes(user.grade) ? 'blue' : ''
                                 }">
-                                    ${esc(user.role) || '일반 사용자'}
+                                    ${esc(user.grade) || '—'}
                                 </span>
                             </td>
-                            <td>
-                                <span class="badge ${
-                                    isOnline(user) ? 'green' : ''
-                                }">
-                                    ${
-                                        isOnline(user)
-                                            ? '● 접속 중'
-                                            : '미접속'
-                                    }
-                                </span>
-                            </td>
-                            <td>
-                                ${esc(dateText(user.last_login))}
-                            </td>
+                            <td><span class="badge ${isOnline(user) ? 'green' : ''}">${isOnline(user) ? '● 접속 중' : '미접속'}</span></td>
+                            <td>${esc(dateText(user.last_login))}</td>
                         </tr>
                     `)
                     .join('') ||
@@ -994,45 +945,26 @@
             button.textContent = '불러오는 중…';
 
             try {
-                if (DEMO_MODE) {
-                    demoData();
-                } else {
-                    const response = await fetch(DASHBOARD_API, {
-                        credentials: 'same-origin',
-                        cache: 'no-store'
-                    });
-
-                    const body = await response.text();
-
-                    let data;
-
-                    try {
-                        data = JSON.parse(body);
-                    } catch {
-                        throw new Error(
-                            'API가 올바른 JSON을 반환하지 않았습니다.'
-                        );
-                    }
-
-                    if (!response.ok || !data.success) {
-                        throw new Error(
-                            data.message ||
-                            '사용자 현황을 불러오지 못했습니다.'
-                        );
-                    }
-
-                    if (
-                        !Array.isArray(data.users) ||
-                        !Array.isArray(data.logs)
-                    ) {
-                        throw new Error(
-                            'API users/logs 형식을 확인해주세요.'
-                        );
-                    }
-
-                    users = data.users;
-                    logs = data.logs;
+                const response = await fetch(DASHBOARD_API, {
+                    credentials: 'same-origin',
+                    cache: 'no-store'
+                });
+                const body = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(body);
+                } catch {
+                    throw new Error('사용자 조회 API 응답 오류입니다. PHP 파일과 DB 연결 설정을 확인해주세요.');
                 }
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || '사용자 목록을 불러오지 못했습니다.');
+                }
+                if (!Array.isArray(data.users)) {
+                    throw new Error('API users 형식이 올바르지 않습니다.');
+                }
+                users = data.users;
+                logs = Array.isArray(data.logs) ? data.logs : [];
+                serverStats = data.stats;
 
                 const selectedDepartment = $('department').value;
 
@@ -1067,9 +999,7 @@
 
                 $('notice').classList.remove('error');
 
-                $('notice').textContent = DEMO_MODE
-                    ? '예시 데이터 화면입니다. 사용자 수와 접속 현황은 실제 정보가 아닙니다. 실제 데이터는 관리자 API 연결 후 표시됩니다.'
-                    : '접속 중은 최근 5분 내 활동 기준입니다. 오늘 로그인 수는 API가 반환한 로그인 기록을 기준으로 계산됩니다.';
+                $('notice').textContent = '접속 중은 최근 5분 내 활동 기준입니다. 이력은 최근 500건, 오늘 통계는 전체 오늘 기록 기준입니다.';
 
             } catch (error) {
                 $('notice').classList.add('error');
@@ -1153,14 +1083,17 @@
             if (!user) return;
 
             const rows = [
-                ['아이디', user.id],
+                ['번호', user.id],
+                ['아이디', user.user_id],
                 ['이름', user.name],
                 ['부서', user.department],
                 ['직급', user.position],
                 ['연락처', user.phone],
-                ['권한', user.role],
+                ['권한', user.grade],
                 ['최근 로그인', dateText(user.last_login)],
-                ['최근 활동', dateText(user.last_seen)]
+                ['최근 활동', dateText(user.last_seen)],
+                ['등록일', dateText(user.created_at)],
+                ['수정일', dateText(user.updated_at)]
             ];
 
             $('detail').innerHTML = rows
@@ -1229,8 +1162,7 @@
 
             // 이미 불러온 데이터의 접속 상태를 1분마다 다시 계산
             setInterval(() => {
-                stats();
-                renderUsers();
+                if (!document.hidden) load();
             }, 60000);
         }
     </script>

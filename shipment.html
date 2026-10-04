@@ -33,7 +33,7 @@
         <main class="content" id="viewShipment">
             <div class="page-header">
                 <div class="page-title-row">
-                    <h2>차량 출고 및 만기 관리</h2>
+                    <h2>차량 출고 및 반납일 관리</h2>
                     <div style="display: flex; gap: 8px;">
                         <button type="button" class="btn-reset-all" onclick="resetAllFilters()">전체 조건 초기화</button>
                         <select id="pageSizeSelect" class="page-size-select">
@@ -62,7 +62,8 @@
                         <button type="button" class="btn-quick-date" onclick="setQuickDate('lastMonth')">지난달</button>
                         <button type="button" class="btn-quick-date" onclick="setQuickDate('thisMonth')">이번달</button>
                         <button type="button" class="btn-quick-date" onclick="setQuickDate('nextMonth')">다음달</button>
-                        <button type="button" class="btn-quick-date" onclick="setQuickDate('next3Months')">3개월</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('past3Months')">지난3개월</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('next3Months')">향후3개월</button>
                         <button type="button" class="btn-quick-date" onclick="setQuickDate('clear')">기간 비우기</button>
                     </div>
 
@@ -206,6 +207,7 @@
 
     <!-- 사이드바 로더 스크립트 연결 -->
     <script src="sidebar.js"></script>
+    <script src="js/user_activity.js"></script>
 
     <script>
         let shipmentData = [];
@@ -306,6 +308,11 @@
             } else if (periodType === 'nextMonth') {
                 const firstDay = new Date(now.getFullYear(), now.getMonth() + 1, 1);
                 const lastDay = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+            } else if (periodType === 'past3Months') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth() - 3, 0);
+                const lastDay = now;
                 startInput.value = formatDate(firstDay);
                 endInput.value = formatDate(lastDay);
             } else if (periodType === 'next3Months') {

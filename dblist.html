@@ -34,10 +34,8 @@
         <main class="content">
             <div class="page-header">
                 <div class="page-title-row">
-                    <h2>고객 상담 DB 목록</h2>
+                    <h2>회사 DB 목록</h2>
                     <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn-reset-all" onclick="openCreateModal()">+ DB 생성</button>
-                        <button type="button" id="btnDeleteSelected" class="btn-reset-all" style="color:#b42318;" disabled>선택 삭제 (0)</button>
                         <button type="button" id="btnSendSms" class="btn-reset-all" disabled>선택한 고객에게 문자 보내기 (0)</button>
                         <button type="button" class="btn-reset-all" onclick="resetAllFilters()">전체 조건 초기화</button>
                         <select id="pageSizeSelect" class="page-size-select">
@@ -66,7 +64,8 @@
                         <button type="button" class="btn-quick-date" onclick="setQuickDate('lastMonth')">지난달</button>
                         <button type="button" class="btn-quick-date" onclick="setQuickDate('thisMonth')">이번달</button>
                         <button type="button" class="btn-quick-date" onclick="setQuickDate('nextMonth')">다음달</button>
-                        <button type="button" class="btn-quick-date" onclick="setQuickDate('next3Months')">3개월</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('past3Months')">지난3개월</button>
+                        <button type="button" class="btn-quick-date" onclick="setQuickDate('next3Months')">향후3개월</button>
                         <button type="button" class="btn-quick-date" onclick="setQuickDate('clear')">기간 비우기</button>
                     </div>
 
@@ -177,6 +176,7 @@
     <!-- 사이드바 로더 연결 -->
     <script src="sidebar.js"></script>
     <script src="js/pagination.js"></script>
+    <script src="js/user_activity.js"></script>
 
     <script>
         // 공통 사이드바 로드 (DB 목록 활성화)
@@ -285,43 +285,8 @@
             const button = document.getElementById('btnSendSms');
             button.textContent = `선택한 고객에게 문자 보내기 (${selectedRowIds.size})`;
             button.disabled = selectedRowIds.size === 0;
-            const deleteButton = document.getElementById('btnDeleteSelected');
-            deleteButton.textContent = `선택 삭제 (${selectedRowIds.size})`;
-            deleteButton.disabled = selectedRowIds.size === 0;
+
         }
-
-        document.getElementById('btnDeleteSelected').addEventListener('click', async () => {
-            const ids = [...selectedRowIds];
-            if (!ids.length) return;
-            if (!confirm(`선택한 ${ids.length}건을 DB에서 삭제할까요?\n삭제한 데이터는 되돌릴 수 없습니다.`)) return;
-
-            const button = document.getElementById('btnDeleteSelected');
-            button.disabled = true;
-            try {
-                const response = await fetch('api/delete_dblist.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ids })
-                });
-                const body = await response.text();
-                let result;
-                try {
-                    result = JSON.parse(body);
-                } catch (_) {
-                    throw new Error(`삭제 API 응답 오류 (HTTP ${response.status}). api/delete_dblist.php 파일과 PHP 오류 로그를 확인해주세요.`);
-                }
-                if (!response.ok || !result.success) {
-                    throw new Error(result.message || `삭제에 실패했습니다. (HTTP ${response.status})`);
-                }
-                selectedRowIds.clear();
-                await loadDbData();
-                alert(`${result.deletedCount}건을 삭제했습니다.`);
-            } catch (error) {
-                alert(error.message || '삭제에 실패했습니다.');
-            } finally {
-                updateSmsButton();
-            }
-        });
 
         document.getElementById('btnSendSms').addEventListener('click', () => {
             // 선택 상태는 페이지 이동과 검색 후에도 유지된다.
@@ -389,7 +354,12 @@
                 const lastDay = new Date(now.getFullYear(), now.getMonth() + 2, 0);
                 startInput.value = formatDate(firstDay);
                 endInput.value = formatDate(lastDay);
-            } else if (periodType === 'next3Months') {
+            } else if (periodType === 'past3Months') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth() - 3, 0);
+                const lastDay = now;
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
+             } else if (periodType === 'next3Months') {
                 const firstDay = now;
                 const lastDay = new Date(now.getFullYear(), now.getMonth() + 3, 0);
                 startInput.value = formatDate(firstDay);
@@ -423,15 +393,6 @@
 
         const editModalOverlay = document.getElementById('editModalOverlay');
 
-        window.openCreateModal = function() {
-            document.getElementById('editForm').reset();
-            document.getElementById('editId').value = '';
-            document.getElementById('editModalTitle').textContent = '새 고객 DB 생성';
-            document.getElementById('editSubmitButton').textContent = 'DB 생성';
-            document.getElementById('editaskDate').value = new Date().toLocaleDateString('sv-SE');
-            editModalOverlay.classList.add('active');
-        };
-
         window.openModal = function(id) {
             const item = dbData.find(d => d.id === id);
             if (!item) return;
@@ -459,44 +420,6 @@
 
         window.handleFormSubmit = async function(e) {
             e.preventDefault();
-            if (!document.getElementById('editId').value) {
-                const fields = {
-                    name: 'editName', phone: 'editPhone', askDate: 'editaskDate',
-                    maker: 'editMaker', carName: 'editCarName',
-                    hopeCar: 'editHopeCar', rentLease: 'editRentLease',
-                    source: 'editSource', consultant: 'editConsultant',
-                    releaseStatus: 'editReleaseStatus'
-                };
-                const data = Object.fromEntries(Object.entries(fields).map(([key, id]) =>
-                    [key, document.getElementById(id).value.trim()]));
-                const button = document.getElementById('editSubmitButton');
-                button.disabled = true;
-                try {
-                    const response = await fetch('api/create_dblist.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-                    const body = await response.text();
-                    let result;
-                    try {
-                        result = JSON.parse(body);
-                    } catch (_) {
-                        throw new Error(`저장 API 응답 오류 (HTTP ${response.status}). api/create_dblist.php 파일과 PHP 오류 로그를 확인해주세요.`);
-                    }
-                    if (!response.ok || !result.success) {
-                        throw new Error(result.message || 'DB 생성에 실패했습니다.');
-                    }
-                    closeModal();
-                    await loadDbData();
-                    alert('새 고객 DB가 생성되었습니다.');
-                } catch (error) {
-                    alert(error.message || 'DB 생성에 실패했습니다.');
-                } finally {
-                    button.disabled = false;
-                }
-                return;
-            }
             const id = parseInt(document.getElementById('editId').value, 10);
             const target = dbData.find(d => d.id === id);
 

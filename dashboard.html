@@ -478,6 +478,46 @@
         </div>
     </div>
 
+    <script src="js/user_activity.js"></script>
+
+    <!-- 다른 화면 스크립트 오류와 관계없이 로그아웃 버튼을 먼저 연결 -->
+    <script>
+        (() => {
+            const welcome = document.getElementById('userWelcome');
+            const button = document.getElementById('btnLogout');
+            if (welcome) {
+                welcome.textContent = (sessionStorage.getItem('userName') || '관리자') + '님 환영합니다';
+            }
+            if (!button) return;
+            button.type = 'button';
+            button.addEventListener('click', async () => {
+                if (!confirm('로그아웃 하시겠습니까?')) return;
+                button.disabled = true;
+                button.textContent = '로그아웃 중…';
+                try {
+                    const response = await fetch('api/logout.php', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        cache: 'no-store'
+                    });
+                    const text = await response.text();
+                    let result;
+                    try { result = JSON.parse(text); }
+                    catch { throw new Error('로그아웃 API 응답 오류입니다. api/logout.php 파일을 확인해주세요.'); }
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || '서버 로그아웃에 실패했습니다.');
+                    }
+                    sessionStorage.clear();
+                    location.replace('index.html');
+                } catch (error) {
+                    alert(error.message || '로그아웃 중 오류가 발생했습니다.');
+                    button.disabled = false;
+                    button.textContent = '로그아웃';
+                }
+            });
+        })();
+    </script>
+
     <!-- 사이드바 로더 스크립트 연결 -->
     <script src="sidebar.js"></script>
 
@@ -493,7 +533,13 @@
         const urlParams = new URLSearchParams(window.location.search);
         const isShipmentTab = urlParams.get('tab') === 'shipment';
 
-        initCommonSidebar(isShipmentTab ? 'navShipment' : 'navDashboard');
+        if (typeof initCommonSidebar === 'function') {
+            try {
+                initCommonSidebar(isShipmentTab ? 'navShipment' : 'navDashboard');
+            } catch (error) {
+                console.error('사이드바 초기화 오류:', error);
+            }
+        }
 
         if (isShipmentTab) {
             document.getElementById('viewDashboard').style.display = 'none';
@@ -851,17 +897,6 @@
             });
         });
 
-        // 사용자명 및 로그아웃
-        const userName = sessionStorage.getItem('userName') || '관리자';
-        document.getElementById('userWelcome').textContent = `${userName}님 환영합니다`;
-
-        document.getElementById('btnLogout').addEventListener('click', () => {
-            if (confirm('로그아웃 하시겠습니까?')) {
-                sessionStorage.removeItem('isLoggedIn');
-                sessionStorage.removeItem('userName');
-                location.replace('index.html');
-            }
-        });
     </script>
 </body>
 </html>
