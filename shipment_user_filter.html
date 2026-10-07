@@ -125,8 +125,8 @@
                                 <th data-key="period">운용기간 <span class="sort-icon">↕</span></th>
                                 <th data-key="releaseDate">출고일<span class="sort-icon">↕</span></th>
                                 <th data-key="returnDate">반납일<span class="sort-icon">↕</span></th>
-                                <!-- <th data-key="ag">AG <span class="sort-icon">↕</span></th>
-                                <th data-key="agFee">AG수수료(부가세별도) <span class="sort-icon">↕</span></th> -->
+                                <th data-key="ag">AG <span class="sort-icon">↕</span></th>
+                                <th data-key="agFee">AG수수료(부가세별도) <span class="sort-icon">↕</span></th>
                                 <th data-key="manager" class="yellow">담당자<span class="sort-icon">↕</span></th>
                             </tr>
                         </thead>
@@ -507,7 +507,9 @@
                             <td class="text-right">${Number(item.price || 0).toLocaleString()}</td>
                             <td>${item.period || ''}</td>
                             <td>${item.releaseDate || ''}</td>
-                            <td style="font-weight: 600; color: #d32f2f;">${item.returnDate || ''}</td>                            
+                            <td style="font-weight: 600; color: #d32f2f;">${item.returnDate || ''}</td>
+                            <td>${item.ag || ''}</td>
+                            <td class="text-right">${Number(item.agFee || 0).toLocaleString()}</td>
                             <td>${item.manager || ''}</td>
                         </tr>
                     `;
@@ -515,8 +517,6 @@
 
                 syncCheckAllState(pageSlice);
             }
-            // <td>${item.ag || ''}</td>
-            // <td class="text-right">${Number(item.agFee || 0).toLocaleString()}</td>
 
             document.getElementById('pageInfoText').textContent = 
                 total === 0 ? "데이터 없음" : `총 ${total.toLocaleString()}건 중 ${startIdx + 1} - ${endIdx}건 표시`;

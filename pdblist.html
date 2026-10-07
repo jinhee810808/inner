@@ -24,6 +24,15 @@
 #pdStatus { margin:8px 0 14px; color:#526279; }
 mark { background:#fff0a6; color:inherit; }
 @media(max-width:700px){.page-title-row { flex-wrap:wrap; gap:12px; }.filter-container { flex-wrap:wrap; }.search-box { width:100%; }.search-box input { width:100%; }}
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font: inherit;
+    background: #fff;
+    box-sizing: border-box;
+}
 </style></head>
 <body>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -128,8 +137,8 @@ mark { background:#fff0a6; color:inherit; }
                         <div class="form-group"><label for="editName">고객명 *</label><input id="editName" maxlength="50" required></div>
                         <div class="form-group"><label for="editPhone">전화번호</label><input id="editPhone" type="tel" maxlength="20"></div>
                         
-                        <div class="form-group"><label for="editMaker">제조사</label><input id="editMaker" maxlength="50"></div>
-                        <div class="form-group"><label for="editCarName">차량명</label><input id="editCarName" maxlength="100"></div>
+                        <div class="form-group"><label for="editMaker">제조사</label><select id="editMaker" maxlength="50"><option value="">제조사 선택</option></select></div>
+                        <div class="form-group"><label for="editCarName">차량명</label><select id="editCarName" disabled><option value="">제조사를 먼저 선택해주세요</option></select></div>
                         <div class="form-group"><label for="editReceiptDate">접수일</label><input type="date" id="editReceiptDate"></div>
                         <div class="form-group"><label for="editManager">담당자</label><input id="editManager" readonly></div>
                         <div class="form-group">
@@ -189,10 +198,213 @@ mark { background:#fff0a6; color:inherit; }
     $('dbTableBody').onchange=e=>{if(!e.target.matches('.row-checkbox'))return;const id=Number(e.target.dataset.id);e.target.checked?selectedRowIds.add(id):selectedRowIds.delete(id);renderTable();};
     $('dbTableBody').onclick=e=>{const b=e.target.closest('[data-edit]');if(b)openModal(Number(b.dataset.edit));};
     $('checkAll').onchange=e=>{filteredData.slice((currentPage-1)*pageSize,currentPage*pageSize).forEach(d=>e.target.checked?selectedRowIds.add(d.id):selectedRowIds.delete(d.id));renderTable();};
+
+    let carModels = null;
+    let carModelsRequest = null;
+    let modalRequest = 0;
+
+    const makerOrder = [
+        '현대', '기아', '제네시스', '르노', '쉐보레', 'KGM',
+        'AUDI', 'BENZ', 'BMW', 'BYD', 'CADILLAC', 'FORD',
+        'GMC', 'HONDA', 'LEXUS', 'LINCOLN', 'MINI',
+        'POLESTAR', 'PORSHE', 'TESLA', 'TOYOTA',
+        'VOLKSWAGEN', 'VOLVO'
+    ];
+
+    // 기존 DB의 포르쉐 표기도 같은 순번에 배치합니다.
+    // 화면 표시만 바꾸며 DB에 저장할 제조사 값은 유지합니다.
+    function makerKey(maker) {
+        return ['PORCHE', 'PORSCHE', 'PORSHE'].includes(maker)
+            ? 'PORSHE'
+            : maker;
+    }
+
+    function fillSelect(id, placeholder, values, current = '') {
+        const select = $(id);
+
+        select.replaceChildren(new Option(placeholder, ''));
+
+        [...new Set(values)].forEach(value => {
+            const label = id === 'editMaker' ? makerKey(value) : value;
+            select.add(new Option(label, value));
+        });
+
+        // 목록에서 제외된 기존 고객의 제조사·차량값도 보존합니다.
+        if (current && !values.includes(current)) {
+            select.add(new Option(current + ' (기존 값)', current));
+        }
+
+        select.value = current;
+    }
+
+    function fillCarNames(current = '') {
+        const maker = $('editMaker').value;
+
+        const rows = (carModels || [])
+            .filter(row => row.maker === maker)
+            .sort((a, b) => {
+                const aOrder = a.sorted == null ? Infinity : Number(a.sorted);
+                const bOrder = b.sorted == null ? Infinity : Number(b.sorted);
+
+                return (
+                    (aOrder === bOrder ? 0 : aOrder - bOrder)
+                    || Number(a.id) - Number(b.id)
+                );
+            });
+
+        fillSelect(
+            'editCarName',
+            maker ? '차량명 선택' : '제조사를 먼저 선택해주세요',
+            rows.map(row => row.model),
+            current
+        );
+
+        $('editCarName').disabled = !maker;
+    }
+
+    function fillCarSelectors(maker = '', model = '') {
+        const makers = [...new Set(
+            (carModels || []).map(row => row.maker)
+        )];
+
+        makers.sort((a, b) => {
+            const aIndex = makerOrder.indexOf(makerKey(a));
+            const bIndex = makerOrder.indexOf(makerKey(b));
+
+            return (
+                (aIndex < 0 ? 999 : aIndex)
+                - (bIndex < 0 ? 999 : bIndex)
+            ) || a.localeCompare(b, 'ko');
+        });
+
+        fillSelect('editMaker', '제조사 선택', makers, maker);
+        fillCarNames(model);
+    }
+
+    async function loadCarModels() {
+        if (carModels) return;
+
+        if (!carModelsRequest) {
+            carModelsRequest = (async () => {
+                const response = await fetch('api/get_car_models.php', {
+                    credentials: 'same-origin',
+                    cache: 'no-store'
+                });
+
+                let result;
+
+                try {
+                    result = await response.json();
+                } catch {
+                    throw new Error(
+                        'api/get_car_models.php의 응답을 확인해주세요.'
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    !result.success ||
+                    !Array.isArray(result.data)
+                ) {
+                    throw new Error(
+                        result.message || '차량 목록을 불러오지 못했습니다.'
+                    );
+                }
+
+                carModels = result.data;
+            })();
+        }
+
+        try {
+            await carModelsRequest;
+        } finally {
+            carModelsRequest = null;
+        }
+    }
+
+    $('editMaker').addEventListener('change', () => {
+        fillCarNames();
+    });
     const fields={name:'editName',phone:'editPhone',receipt_date:'editReceiptDate',maker:'editMaker',car_name:'editCarName',memo:'editMemo'};
-    window.openCreateModal=()=>{if(!me){alert('사용자 정보를 불러온 후 다시 시도해주세요.');return;}$('editForm').reset();$('editId').value='';$('editReceiptDate').value=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});$('editManager').value=me.name;$('editManagerId').value=me.user_id;$('editModalTitle').textContent='새 개인 DB 생성';$('editSubmitButton').textContent='DB 생성';$('editModalOverlay').classList.add('active');$('editName').focus();};
-    window.openModal=id=>{const d=dbData.find(d=>d.id===id);if(!d)return;$('editId').value=id;Object.entries(fields).forEach(([k,v])=>$(v).value=d[k]||'');$('editManager').value=d.manager||me.name;$('editManagerId').value=d.manager_id;$('editModalTitle').textContent='개인 DB 상세 수정';$('editSubmitButton').textContent='저장';$('editModalOverlay').classList.add('active');};
-    window.closeModal=()=>{if(!saving)$('editModalOverlay').classList.remove('active');};
+    
+    window.openCreateModal = async () => {
+        if (!me) {
+            alert('사용자 정보를 불러온 후 다시 시도해주세요.');
+            return;
+        }
+
+        const request = ++modalRequest;
+
+        try {
+            await loadCarModels();
+        } catch (e) {
+            if (request === modalRequest) alert(e.message);
+            return;
+        }
+
+        if (request !== modalRequest) return;
+
+        $('editForm').reset();
+        fillCarSelectors();
+
+        $('editId').value = '';
+        $('editReceiptDate').value = new Date().toLocaleDateString(
+            'sv-SE',
+            { timeZone: 'Asia/Seoul' }
+        );
+
+        $('editManager').value = me.name;
+        $('editManagerId').value = me.user_id;
+
+        $('editModalTitle').textContent = '새 개인 DB 생성';
+        $('editSubmitButton').textContent = 'DB 생성';
+
+        $('editModalOverlay').classList.add('active');
+        $('editName').focus();
+    };
+
+    window.openModal = async id => {
+        const d = dbData.find(row => row.id === id);
+        if (!d) return;
+
+        const request = ++modalRequest;
+
+        try {
+            await loadCarModels();
+        } catch (e) {
+            if (request === modalRequest) alert(e.message);
+            return;
+        }
+
+        if (request !== modalRequest) return;
+
+        $('editId').value = id;
+
+        // 제조사 목록 → 해당 제조사의 차량 목록 → 기존 값 선택
+        fillCarSelectors(d.maker || '', d.car_name || '');
+
+        Object.entries(fields)
+            .filter(([key]) => !['maker', 'car_name'].includes(key))
+            .forEach(([key, inputId]) => {
+                $(inputId).value = d[key] || '';
+            });
+
+        $('editManager').value = d.manager || me.name;
+        $('editManagerId').value = d.manager_id;
+
+        $('editModalTitle').textContent = '개인 DB 상세 수정';
+        $('editSubmitButton').textContent = '저장';
+
+        $('editModalOverlay').classList.add('active');
+    };
+
+    window.closeModal = () => {
+        if (!saving) {
+            modalRequest++;
+            $('editModalOverlay').classList.remove('active');
+        }
+    };
+    
     window.handleFormSubmit=async e=>{e.preventDefault();if(saving)return;saving=true;$('editSubmitButton').disabled=true;const data=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,$(v).value.trim()]));if($('editId').value)data.id=Number($('editId').value);try{await api('POST',{action:'save',...data});$('editModalOverlay').classList.remove('active');await loadDbData();alert('저장되었습니다.');}catch(e){alert(e.message);}finally{saving=false;$('editSubmitButton').disabled=false;}};
     $('btnDeleteSelected').onclick=async()=>{const ids=[...selectedRowIds];if(!ids.length||!confirm(`${ids.length}건을 삭제할까요? 삭제한 데이터는 되돌릴 수 없습니다.`))return;$('btnDeleteSelected').disabled=true;try{const r=await api('POST',{action:'delete',ids});await loadDbData();alert(`${r.deletedCount}건 삭제했습니다.`);}catch(e){alert(e.message);}finally{updateButtons();}};
     $('btnSendSms').onclick=()=>{const nums=[...new Set(dbData.filter(d=>selectedRowIds.has(d.id)).map(d=>String(d.phone||'').replace(/[^\d+]/g,'')).filter(n=>/^(?:01\d{8,9}|\+82(?:10|11|16|17|18|19)\d{7,8})$/.test(n)))];if(!nums.length)return alert('유효한 휴대폰번호가 없습니다.');if(confirm(`${nums.length}개 번호로 문자 작성 화면을 여시겠습니까? 문자 발송은 직접 확인해주세요.`))location.href='sms:'+nums.join(',');};

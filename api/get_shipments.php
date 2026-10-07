@@ -15,27 +15,36 @@ try {
 
     // 2. 전체 출고목록 조회 (순번 기준 정렬)
     $stmt = $pdo->query("
-        SELECT 
-            id,
-            seq_no AS no,
-            capital,
-            contract_type AS type,
-            company_name AS company,
-            representative AS ceo,
-            phone,
-            origin_type AS origin,
-            maker,
-            model,
-            IFNULL(model_modifier, '') AS modifier,
-            car_price AS price,
-            lease_period AS period,
-            release_date AS releaseDate,
-            return_date AS returnDate,
-            ag_rate AS ag,
-            ag_fee AS agFee,
-            IFNULL(manager2, '') AS manager2
-        FROM inner_shipments
-        ORDER BY release_date DESC, seq_no DESC
+        SELECT
+            s.id,
+            s.seq_no AS no,
+            s.capital,
+            s.contract_type AS type,
+            s.company_name AS company,
+            s.representative AS ceo,
+            s.phone,
+            s.origin_type AS origin,
+            s.maker,
+            s.model,
+            IFNULL(s.model_modifier, '') AS modifier,
+            s.car_price AS price,
+            s.lease_period AS period,
+            s.release_date AS releaseDate,
+            s.return_date AS returnDate,
+            s.ag_rate AS ag,
+            s.ag_fee AS agFee,
+            COALESCE(h.manager_user_id, s.manager_id, '') AS manager_id,
+            COALESCE(h.manager_name, s.manager, '') AS manager
+        FROM inner_shipments AS s
+        LEFT JOIN inner_shipment_managers AS h
+            ON h.id = (
+                SELECT m.id
+                FROM inner_shipment_managers AS m
+                WHERE m.shipment_id = s.id
+                ORDER BY m.assigned_at DESC, m.id DESC
+                LIMIT 1
+            )
+        ORDER BY s.release_date DESC, s.seq_no DESC;
     ");
 
     $data = $stmt->fetchAll();

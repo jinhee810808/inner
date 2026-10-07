@@ -183,6 +183,20 @@
             min-width: 220px;
         }
 
+        .selection-cell {
+            width: 44px;
+            text-align: center;
+        }
+
+        .selection-cell input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            vertical-align: middle;
+            cursor: pointer;
+            accent-color: #2459a9;
+        }
+
         .table-scroll {
             overflow: auto;
             max-height: 540px;
@@ -507,6 +521,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th class="selection-cell"><input type="checkbox" id="selectAllUsers" aria-label="현재 페이지 사용자 전체 선택" title="현재 페이지 전체 선택"></th>
                                 <th>아이디</th>
                                 <th>이름</th>
                                 <th>부서</th>
@@ -680,6 +695,32 @@
         const $ = id => document.getElementById(id);
 
         let users = [];
+        const selectedUserIds = new Set();
+
+        function syncUserSelection() {
+            const checkboxes = [...$('users').querySelectorAll('.user-checkbox')];
+            const checkedCount = checkboxes.filter(input => input.checked).length;
+            $('selectAllUsers').disabled = checkboxes.length === 0;
+            $('selectAllUsers').checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+            $('selectAllUsers').indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        }
+
+        $('selectAllUsers').addEventListener('change', event => {
+            $('users').querySelectorAll('.user-checkbox').forEach(input => {
+                input.checked = event.target.checked;
+                if (input.checked) selectedUserIds.add(input.value);
+                else selectedUserIds.delete(input.value);
+            });
+            syncUserSelection();
+        });
+
+        $('users').addEventListener('change', event => {
+            const input = event.target;
+            if (!input.matches('.user-checkbox')) return;
+            if (input.checked) selectedUserIds.add(input.value);
+            else selectedUserIds.delete(input.value);
+            syncUserSelection();
+        });
         let logs = [];
         let currentPage = 1;
         let serverStats = null;
@@ -821,6 +862,7 @@
                     .slice(start, start + size)
                     .map(user => `
                         <tr>
+                            <td class="selection-cell"><input type="checkbox" class="user-checkbox" value="${esc(user.user_id)}" aria-label="${esc(user.name || user.user_id)} 선택" ${selectedUserIds.has(String(user.user_id)) ? 'checked' : ''}></td>
                             <td>${highlight(user.user_id, keyword)}</td>
                             <td>
                                 <button
@@ -849,11 +891,13 @@
                     .join('') ||
                 `
                     <tr>
-                        <td colspan="8" class="empty">
+                        <td colspan="9" class="empty">
                             조건에 맞는 사용자가 없습니다.
                         </td>
                     </tr>
                 `;
+
+            syncUserSelection();
 
             $('range').textContent = filtered.length
                 ? `${start + 1}–${
@@ -963,6 +1007,10 @@
                     throw new Error('API users 형식이 올바르지 않습니다.');
                 }
                 users = data.users;
+                const existingUserIds = new Set(users.map(user => String(user.user_id)));
+                selectedUserIds.forEach(id => {
+                    if (!existingUserIds.has(id)) selectedUserIds.delete(id);
+                });
                 logs = Array.isArray(data.logs) ? data.logs : [];
                 serverStats = data.stats;
 

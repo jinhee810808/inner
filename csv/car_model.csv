@@ -1,0 +1,173 @@
+﻿origin_type,maker,model,sorted,use_yn,shape
+국산,KGM,렉스턴,1,y,RV
+국산,KGM,무쏘,2,y,RV
+국산,KGM,액티언,3,y,RV
+국산,KGM,코란도,4,y,RV
+국산,KGM,토레스,5,y,RV
+국산,KGM,티볼리,6,y,RV
+국산,기아,EV3,1,y,RV
+국산,기아,EV4,2,y,RV
+국산,기아,EV5,3,y,RV
+국산,기아,EV6,4,y,RV
+국산,기아,EV9,5,y,RV
+국산,기아,K3,6,y,승용
+국산,기아,K5,7,y,승용
+국산,기아,K7,8,y,승용
+국산,기아,K8,9,y,승용
+국산,기아,K9,10,y,승용
+국산,기아,PV5,11,y,RV
+국산,기아,니로,12,y,RV
+국산,기아,레이,13,y,RV
+국산,기아,모닝,14,y,RV
+국산,기아,모하비,15,y,RV
+국산,기아,봉고3,16,y,상용
+국산,기아,셀토스,17,y,RV
+국산,기아,스팅어,18,y,RV
+국산,기아,스포티지,19,y,RV
+국산,기아,쏘렌토,20,y,RV
+국산,기아,카니발,21,y,RV
+국산,기아,타스만,22,y,상용
+국산,르노,QM6,1,y,RV
+국산,르노,SM6,2,y,RV
+국산,르노,XM3,3,y,RV
+국산,르노,그랑 콜레오스,4,y,RV
+국산,르노,세닉,5,y,RV
+국산,르노,아르카나,6,y,RV
+국산,르노,필랑트,7,y,RV
+국산,쉐보레,스파크,1,y,RV
+국산,쉐보레,콜로라도,2,y,RV
+국산,쉐보레,트래버스,3,y,RV
+국산,쉐보레,트랙스 크로스오버,4,y,RV
+국산,쉐보레,트레일 블레이저,5,y,RV
+국산,제네시스,G70,1,y,승용
+국산,제네시스,G80,2,y,승용
+국산,제네시스,G90,3,y,승용
+국산,제네시스,GV60,4,y,RV
+국산,제네시스,GV70,5,y,RV
+국산,제네시스,GV80,6,y,RV
+국산,현대,ST1,1,y,상용
+국산,현대,그랜저,2,y,승용
+국산,현대,넥쏘,3,y,RV
+국산,현대,베뉴,4,y,RV
+국산,현대,스타렉스,5,y,RV
+국산,현대,스타리아,6,y,RV
+국산,현대,싼타페,7,y,RV
+국산,현대,쏘나타,8,y,승용
+국산,현대,아반떼,9,y,승용
+국산,현대,아이오닉5,10,y,RV
+국산,현대,아이오닉6,11,y,RV
+국산,현대,아이오닉9,12,y,RV
+국산,현대,캐스퍼,13,y,RV
+국산,현대,코나,14,y,RV
+국산,현대,투싼,15,y,RV
+국산,현대,팰리세이드,16,y,RV
+국산,현대,포터2,17,y,상용
+외산,AUDI,A3,1,y,승용
+외산,AUDI,A4,2,y,승용
+외산,AUDI,A5,3,y,승용
+외산,AUDI,A6,4,y,승용
+외산,AUDI,A7,5,y,승용
+외산,AUDI,Q2,6,y,RV
+외산,AUDI,Q3,7,y,RV
+외산,AUDI,Q4,8,y,RV
+외산,AUDI,Q5,9,y,RV
+외산,AUDI,Q7,10,y,RV
+외산,AUDI,Q8,11,y,RV
+외산,BENZ,A-Class,1,y,승용
+외산,BENZ,C-Class,2,y,승용
+외산,BENZ,E-Class,3,y,승용
+외산,BENZ,G-Class,4,y,승용
+외산,BENZ,S-Class,5,y,승용
+외산,BENZ,AMG GT,6,y,승용
+외산,BENZ,CLA-Class,7,y,RV
+외산,BENZ,CLE-Class,8,y,RV
+외산,BENZ,CLS-Class,9,y,RV
+외산,BENZ,EQA,10,y,RV
+외산,BENZ,EQB,11,y,RV
+외산,BENZ,EQE,12,y,RV
+외산,BENZ,EQS,13,y,RV
+외산,BENZ,GLA-Class,14,y,RV
+외산,BENZ,GLB-Class,15,y,RV
+외산,BENZ,GLC-Class,16,y,RV
+외산,BENZ,GLE-Class,17,y,RV
+외산,BENZ,GLS-Class,18,y,RV
+외산,BENZ,Maybach GLS-Class,19,y,RV
+외산,BENZ,Maybach S-Class,20,y,승용
+외산,BMW,1 Series,1,y,승용
+외산,BMW,2 Series,2,y,승용
+외산,BMW,3 Series,3,y,승용
+외산,BMW,4 Series,4,y,승용
+외산,BMW,5 Series,5,y,승용
+외산,BMW,6 Series,6,y,승용
+외산,BMW,7 Series,7,y,승용
+외산,BMW,8 Series,8,y,승용
+외산,BMW,i4,9,y,승용
+외산,BMW,i5,10,y,승용
+외산,BMW,i7,11,y,승용
+외산,BMW,iX1,12,y,RV
+외산,BMW,iX2,13,y,RV
+외산,BMW,iX3,14,y,RV
+외산,BMW,M2,15,y,RV
+외산,BMW,M3,16,y,RV
+외산,BMW,X1,17,y,RV
+외산,BMW,X3,18,y,RV
+외산,BMW,X4,19,y,RV
+외산,BMW,X5,20,y,RV
+외산,BMW,X6,21,y,RV
+외산,BMW,X7,22,y,RV
+외산,BYD,ATTO 3,1,y,RV
+외산,BYD,돌핀,2,y,RV
+외산,BYD,씨라이언,3,y,RV
+외산,CADILLAC,에스컬레이드,1,y,RV
+외산,FORD,머스탱,1,y,RV
+외산,FORD,익스플로러,2,y,RV
+외산,GMC,Sierra,1,y,RV
+외산,GMC,아카디아,2,y,RV
+외산,GMC,캐니언,3,y,RV
+외산,HONDA,CR-V,1,y,RV
+외산,HONDA,어코드,2,y,RV
+외산,LEXUS,ES,1,y,RV
+외산,LEXUS,LM,2,y,RV
+외산,LEXUS,LS,3,y,RV
+외산,LEXUS,NX,4,y,RV
+외산,LEXUS,RX,5,y,RV
+외산,LINCOLN,Aviator,1,y,RV
+외산,MINI,미니 Clubman,1,y,RV
+외산,MINI,미니 Cooper,2,y,RV
+외산,MINI,미니 COUNTRYMAN,3,y,RV
+외산,MINI,미니 Electric (2023년형),4,y,RV
+외산,MINI,미니 Hatch,5,y,RV
+외산,MINI,미니 에이스맨,6,y,RV
+외산,POLESTAR,2,1,y,RV
+외산,POLESTAR,4,2,y,RV
+외산,PORCHE,911,1,y,RV
+외산,PORCHE,마칸,2,y,RV
+외산,PORCHE,카이엔,3,y,RV
+외산,PORCHE,타이칸,4,y,RV
+외산,PORCHE,파나메라,5,y,RV
+외산,TESLA,Model 3,1,y,승용
+외산,TESLA,Model S,2,n,RV
+외산,TESLA,Model X,3,n,RV
+외산,TESLA,Model Y,4,y,RV
+외산,TOYOTA,RAV4,1,y,RV
+외산,TOYOTA,Sienna,2,y,RV
+외산,TOYOTA,알파드,3,y,RV
+외산,TOYOTA,캠리,4,y,승용
+외산,TOYOTA,프리우스,5,y,RV
+외산,TOYOTA,하이랜더,6,y,RV
+외산,VOLKSWAGEN,GOLF,1,y,RV
+외산,VOLKSWAGEN,ID.4,2,y,RV
+외산,VOLKSWAGEN,골프,3,y,RV
+외산,VOLKSWAGEN,아테온,4,y,RV
+외산,VOLKSWAGEN,제타,5,y,RV
+외산,VOLKSWAGEN,투아렉,6,y,RV
+외산,VOLKSWAGEN,티구안,7,y,RV
+외산,VOLVO,EX30,1,y,RV
+외산,VOLVO,S60,2,y,RV
+외산,VOLVO,S90,3,y,RV
+외산,VOLVO,V60,4,y,승용
+외산,VOLVO,V90,5,y,승용
+외산,VOLVO,XC3,6,y,RV
+외산,VOLVO,XC40,7,y,RV
+외산,VOLVO,XC60,8,y,RV
+외산,VOLVO,XC90,9,y,RV
