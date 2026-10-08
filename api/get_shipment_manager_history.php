@@ -13,7 +13,9 @@ try {
     activitySession();
     if (empty($_SESSION['inner_user_id'])) reply(401, array('success'=>false, 'message'=>'로그인이 필요합니다.'));
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') reply(405, array('success'=>false, 'message'=>'GET 요청만 가능합니다.'));
-    $id = $_GET['shipment_id'] ?? '';
+    $id = isset($_GET['shipment_id']) && is_string($_GET['shipment_id'])
+    ? trim($_GET['shipment_id'])
+    : '';
     if (!is_string($id) || !preg_match('/^[1-9][0-9]{0,19}$/', $id)) reply(400, array('success'=>false, 'message'=>'출고 ID가 올바르지 않습니다.'));
     $db = activityDb();
     $stmt = $db->prepare('
@@ -35,7 +37,7 @@ try {
     }
     $stmt->close();
     reply(200, array('success'=>true, 'history'=>$history));
-} catch (Throwable $e) {
+} catch (Exception $e) {
     error_log('shipment manager history: '.$e->getMessage());
     // reply(500, array('success'=>false, 'message'=>'담당자 이력 조회에 실패했습니다. 서버 로그를 확인해주세요.'));
     reply(500, array(

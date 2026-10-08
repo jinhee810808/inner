@@ -388,6 +388,7 @@
         .password-form input { width: 100%; padding: 11px; border: 1px solid #d9e1ec; border-radius: 6px; font: inherit; }
         .password-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
         #passwordMessage { color: #b5443b; line-height: 1.6; }
+        #accountGradeHeader[hidden], #onlineStatusHeader[hidden], #notice[hidden], #lastLoginHeader[hidden], #loginHistoryPanel[hidden], #summaryStats[hidden] { display: none !important; }
     </style>
 </head>
 
@@ -435,10 +436,10 @@
                 </div>
             </div>
 
-            <div class="notice" id="notice" role="status">사용자 목록을 불러오는 중입니다.</div>
+            <div class="notice" id="notice" role="status" hidden>사용자 목록을 불러오는 중입니다.</div>
 
             <!-- 요약 현황 -->
-            <section class="stats" aria-label="전체 현황">
+            <section class="stats" id="summaryStats" aria-label="전체 현황" hidden>
                 <div class="stat">
                     전체 사용자
                     <strong id="total">0</strong>
@@ -527,9 +528,9 @@
                                 <th>부서</th>
                                 <th>직급</th>
                                 <th>연락처</th>
-                                <th>계정 권한</th>
-                                <th>접속 상태</th>
-                                <th>최근 로그인</th>
+                                <th id="accountGradeHeader" hidden>계정 권한</th>
+                                <th id="onlineStatusHeader" hidden>접속 상태</th>
+                                <th id="lastLoginHeader" hidden>최근 로그인</th>
                             </tr>
                         </thead>
 
@@ -549,7 +550,7 @@
             </section>
 
             <!-- 로그인 이력 -->
-            <section class="panel">
+            <section class="panel" id="loginHistoryPanel" hidden>
                 <div class="panel-head">
                     <h2>
                         로그인 이력
@@ -694,6 +695,7 @@
 
         const $ = id => document.getElementById(id);
 
+        let canViewLoginHistory = false;
         let users = [];
         const selectedUserIds = new Set();
 
@@ -877,6 +879,7 @@
                             <td>
                                 ${highlight(user.phone, keyword) || '—'}
                             </td>
+                            ${canViewLoginHistory ? `
                             <td>
                                 <span class="badge ${
                                     ['마스터', '마스터1'].includes(user.grade) ? 'blue' : ''
@@ -885,13 +888,14 @@
                                 </span>
                             </td>
                             <td><span class="badge ${isOnline(user) ? 'green' : ''}">${isOnline(user) ? '● 접속 중' : '미접속'}</span></td>
-                            <td>${esc(dateText(user.last_login))}</td>
+                            ` : ''}
+                            ${canViewLoginHistory ? `<td>${esc(dateText(user.last_login))}</td>` : ''}
                         </tr>
                     `)
                     .join('') ||
                 `
                     <tr>
-                        <td colspan="9" class="empty">
+                        <td colspan="${canViewLoginHistory ? 9 : 6}" class="empty">
                             조건에 맞는 사용자가 없습니다.
                         </td>
                     </tr>
@@ -914,6 +918,14 @@
 
         // 로그인 이력 표시
         function renderLogs() {
+            $('loginHistoryPanel').hidden = !canViewLoginHistory;
+            $('summaryStats').hidden = !canViewLoginHistory;
+            $('notice').hidden = !canViewLoginHistory;
+            if (!canViewLoginHistory) {
+                $('logs').replaceChildren();
+                $('logCount').textContent = '';
+                return;
+            }
             const keyword =
                 $('logSearch').value.trim().toLowerCase();
 
@@ -989,6 +1001,27 @@
             button.textContent = '불러오는 중…';
 
             try {
+                // 목록의 계정이 아닌 로그인한 사용자의 권한 확인
+                const authResponse = await fetch('api/login.php', {
+                    credentials: 'same-origin', cache: 'no-store'
+                });
+                const auth = await authResponse.json();
+                const authorized = authResponse.ok && auth.success === true;
+                canViewLoginHistory = authorized && ['마스터', '마스터1'].includes(String(auth.grade || '').trim());
+                $('lastLoginHeader').hidden = !canViewLoginHistory;
+                $('accountGradeHeader').hidden = !canViewLoginHistory;
+                $('onlineStatusHeader').hidden = !canViewLoginHistory;
+                $('loginHistoryPanel').hidden = !canViewLoginHistory;
+            $('summaryStats').hidden = !canViewLoginHistory;
+            $('notice').hidden = !canViewLoginHistory;
+                if (!canViewLoginHistory) {
+                    logs = [];
+                    $('detailDialog').close();
+                    $('detail').replaceChildren();
+                }
+                renderUsers();
+                renderLogs();
+                if (!authorized) throw new Error(auth.message || '다시 로그인해주세요.');
                 const response = await fetch(DASHBOARD_API, {
                     credentials: 'same-origin',
                     cache: 'no-store'
@@ -1011,7 +1044,7 @@
                 selectedUserIds.forEach(id => {
                     if (!existingUserIds.has(id)) selectedUserIds.delete(id);
                 });
-                logs = Array.isArray(data.logs) ? data.logs : [];
+                logs = canViewLoginHistory && Array.isArray(data.logs) ? data.logs : [];
                 serverStats = data.stats;
 
                 const selectedDepartment = $('department').value;
@@ -1050,6 +1083,18 @@
                 $('notice').textContent = '접속 중은 최근 5분 내 활동 기준입니다. 이력은 최근 500건, 오늘 통계는 전체 오늘 기록 기준입니다.';
 
             } catch (error) {
+                canViewLoginHistory = false;
+                $('lastLoginHeader').hidden = true;
+                $('accountGradeHeader').hidden = true;
+                $('onlineStatusHeader').hidden = true;
+                $('loginHistoryPanel').hidden = true;
+                $('summaryStats').hidden = true;
+                $('notice').hidden = true;
+                logs = [];
+                $('detailDialog').close();
+                $('detail').replaceChildren();
+                renderUsers();
+                renderLogs();
                 $('notice').classList.add('error');
 
                 $('notice').textContent =
@@ -1137,8 +1182,8 @@
                 ['부서', user.department],
                 ['직급', user.position],
                 ['연락처', user.phone],
-                ['권한', user.grade],
-                ['최근 로그인', dateText(user.last_login)],
+                ...(canViewLoginHistory ? [['권한', user.grade]] : []),
+                ...(canViewLoginHistory ? [['최근 로그인', dateText(user.last_login)]] : []),
                 ['최근 활동', dateText(user.last_seen)],
                 ['등록일', dateText(user.created_at)],
                 ['수정일', dateText(user.updated_at)]
